@@ -1,0 +1,59 @@
+# PROclients — критические правила (нельзя нарушать)
+
+Перед любой задачей сверяйся с `ARCHITECTURE.md` и `DESIGN.md`. Правила в `.cursor/rules/` применяются автоматически.
+
+## Стек
+
+| Слой | Технологии |
+|------|------------|
+| Frontend | Vue 3 + TypeScript + Vite + Naive UI |
+| Backend | Go (HTTP API) |
+| БД | PostgreSQL |
+
+Сейчас реализован frontend с in-memory composables. При интеграции данные идут через Go API -> PostgreSQL, не напрямую из UI в БД.
+
+## Границы
+
+- Не добавлять Pinia, Tailwind, SCSS без явного запроса.
+- Не менять несвязанный код. Минимальный diff под задачу.
+- Секреты (DSN, пароли) — только в `.env`, не в репозитории.
+
+## Frontend
+
+- `<script setup lang="ts">`, Composition API.
+- Naive UI: `v-model:value` (не `v-model`).
+- Импорты `@/` -> `frontend/src/`.
+- Типы -> `types/`, константы -> `constants/`, UI-состояние -> `composables/`.
+- HTTP к API -> `frontend/src/api/` (не в компонентах напрямую).
+- Composables — интерфейс для компонентов; внутри вызывают api-слой.
+
+## Backend (Go)
+
+- Код в `backend/`. Бизнес-логика не в HTTP-handlers.
+- Слои: `handler` -> `service` -> `repository` -> PostgreSQL.
+- Миграции схемы — SQL-файлы в `backend/migrations/`, не ручные правки prod-БД.
+- Конфиг через env (`DATABASE_URL` и т.п.).
+
+## База данных (PostgreSQL)
+
+- Единственный источник правды для персистентных данных.
+- `UUID` для id, `TIMESTAMPTZ` для дат/времени.
+- Миграции версионируются; откаты предусмотрены.
+
+## UI
+
+- Канбан: цвета только из `constants/leads.ts` / `constants/tasks.ts`.
+- Sheet: bottom-panel, отступы 15px, z-index 180/190.
+- Дата/время: `utils/dateTime.ts`, модальное окно (не dropdown в sheet).
+- Дизайн — `DESIGN.md`. Primary action: `#1f883d`. UI на русском.
+
+## Git
+
+- Коммиты и push — только по явной просьбе пользователя.
+- Деструктивные git-команды — только по запросу.
+
+## Запрещено
+
+- Прямые SQL-запросы из frontend.
+- Дублирование имён prop и computed в одном компоненте.
+- Хардкод `localhost` API URL — использовать env (`VITE_API_BASE_URL`).

@@ -1,0 +1,8 @@
+# Backend правила
+
+- Язык: Go
+- Слои: handler -> service -> repository
+- Хранилище: PostgreSQL через `DATABASE_URL`
+- SQL-схема только через `backend/migrations/*.sql`
+- UUID для id, TIMESTAMPTZ для дат
+- Не писать бизнес-логику в HTTP-handler

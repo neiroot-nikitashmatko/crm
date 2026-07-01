@@ -1,0 +1,24 @@
+# PROclients — критические правила
+
+Документация: `ARCHITECTURE.md`, `DESIGN.md`, `.cursorrules`.
+
+## Стек
+- Frontend: Vue 3 + TS + Vite + Naive UI
+- Backend: Go (HTTP/JSON API)
+- БД: PostgreSQL
+
+Данные: Vue -> Go API -> PostgreSQL. Не напрямую из UI в БД.
+
+## Нельзя
+- Pinia/Tailwind/SCSS без запроса
+- SQL/БД-логика во frontend
+- Секреты в репозитории
+- `v-model` на Naive UI — только `v-model:value`
+- Хардкод цветов канбана и API URL
+
+## Обязательно
+- Frontend: composables -> `api/` -> Go
+- Backend: handler -> service -> repository -> PostgreSQL
+- Миграции в `backend/migrations/`
+- UI русский; CRM-кнопки `#1f883d`
+- Коммиты — только по просьбе пользователя

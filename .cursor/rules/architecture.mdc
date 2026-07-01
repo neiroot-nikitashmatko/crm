@@ -1,0 +1,20 @@
+# Архитектура (кратко)
+
+Полная спецификация: `ARCHITECTURE.md`.
+
+## Стек
+Vue SPA (`frontend/`) <-> Go API (`backend/`) <-> PostgreSQL
+
+## Frontend
+`views/` -> `components/<domain>/` -> `composables/` -> `api/` -> Go
+
+Env: `VITE_API_BASE_URL`
+
+## Backend (Go)
+```
+cmd/server/main.go
+internal/handler -> service -> repository -> PostgreSQL
+migrations/*.sql
+```
+
+Env: `DATABASE_URL`, `HTTP_ADDR`, `CORS_ORIGINS`

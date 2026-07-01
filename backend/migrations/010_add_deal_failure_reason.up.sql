@@ -1,0 +1,2 @@
+ALTER TABLE deals
+  ADD COLUMN IF NOT EXISTS failure_reason TEXT NOT NULL DEFAULT '';

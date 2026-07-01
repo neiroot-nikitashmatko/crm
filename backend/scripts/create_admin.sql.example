@@ -1,0 +1,15 @@
+-- Шаблон: первый администратор (выполнить вручную в PostgreSQL).
+-- Скопируй в TablePlus/psql, подставь свои данные. НЕ коммить файл с реальным паролем.
+
+INSERT INTO users (first_name, last_name, patronymic, phone, password_hash, role, position, birth_date)
+VALUES (
+  'Имя',
+  'Фамилия',
+  'Отчество',
+  '+79001234567',
+  crypt('ЗАМЕНИ_НА_СВОЙ_ПАРОЛЬ', gen_salt('bf')),
+  'admin',
+  'Администратор',
+  '1990-01-01'
+)
+ON CONFLICT (phone) DO NOTHING;

@@ -1,0 +1,8 @@
+# Frontend правила
+
+- Vue 3 + TS + `<script setup>`
+- Naive UI: `v-model:value`
+- Данные только через `frontend/src/api/*`
+- В компонентах не выполнять HTTP напрямую
+- Типы в `types/`, константы в `constants/`, состояние в `composables/`
+- UI язык: русский

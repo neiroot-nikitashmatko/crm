@@ -1,0 +1,18 @@
+# Дизайн (кратко)
+
+Полная спецификация: `DESIGN.md`.
+
+## Цвета
+- Текст: `#1a202c` / `#4a5568` / `#718096`
+- Border: `#e2e8f0`, inputs: `#cbd5e1`
+- CRM primary: `#1f883d`
+
+## Layout
+- Header 64px, SectionHeader 56px, page `calc(100dvh - 64px)`
+- Kanban padding `16px 24px 0`, gap 10px, column bg `#f6f8fa`
+
+## Карточки
+- Hover: inset accent + мягкая тень + `translateY(-1px)`
+
+## Bottom sheet
+- fixed, radius `12px 12px 0 0`, z-index 180/190

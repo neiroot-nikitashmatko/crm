@@ -1,0 +1,133 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  PeopleOutline,
+  BriefcaseOutline,
+  CheckboxOutline,
+  CubeOutline,
+  CalendarOutline,
+  IdCardOutline,
+} from '@vicons/ionicons5'
+import { useAuth } from '@/composables/useAuth'
+
+defineProps<{
+  open: boolean
+}>()
+
+const emit = defineEmits<{
+  close: []
+}>()
+
+const route = useRoute()
+const router = useRouter()
+const { isAdmin } = useAuth()
+
+const menuItems = [
+  { label: 'Лиды', name: 'leads', icon: PeopleOutline, adminOnly: false },
+  { label: 'Сделки', name: 'deals', icon: BriefcaseOutline, adminOnly: false },
+  { label: 'Задачи', name: 'tasks', icon: CheckboxOutline, adminOnly: false },
+  { label: 'Каталог товаров', name: 'products-catalog', icon: CubeOutline, adminOnly: false },
+  { label: 'Календарь производства', name: 'production-calendar', icon: CalendarOutline, adminOnly: false },
+  { label: 'Сотрудники', name: 'employees-list', icon: IdCardOutline, adminOnly: true },
+]
+
+const visibleMenuItems = computed(() =>
+  menuItems.filter((item) => !item.adminOnly || isAdmin.value),
+)
+
+const activeName = computed(() => {
+  const name = route.name as string
+  if (name === 'employees-list' || name === 'employees-new') {
+    return 'employees-list'
+  }
+
+  return name
+})
+
+function navigate(name: string) {
+  router.push({ name })
+  emit('close')
+}
+</script>
+
+<template>
+  <aside class="app-sidebar" :class="{ 'app-sidebar--open': open }">
+    <nav class="app-sidebar__nav">
+      <button
+        v-for="item in visibleMenuItems"
+        :key="item.name"
+        type="button"
+        class="app-sidebar__item"
+        :class="{ 'app-sidebar__item--active': activeName === item.name }"
+        @click="navigate(item.name)"
+      >
+        <component :is="item.icon" class="app-sidebar__icon" />
+        <span>{{ item.label }}</span>
+      </button>
+    </nav>
+  </aside>
+</template>
+
+<style scoped>
+.app-sidebar {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  z-index: 95;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-sidebar--open {
+  transform: translateX(0);
+}
+
+.app-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px;
+  gap: 2px;
+}
+
+.app-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  color: #4a5568;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-sidebar__item:hover {
+  background: #edf2f7;
+  color: #1a202c;
+}
+
+.app-sidebar__item--active {
+  background: #edf2f7;
+  color: #1a202c;
+  font-weight: 500;
+}
+
+.app-sidebar__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+</style>
