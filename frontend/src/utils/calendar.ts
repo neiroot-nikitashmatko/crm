@@ -27,7 +27,7 @@ function getStartOfWeek(date: Date) {
   return monday
 }
 
-export function buildCurrentWeekGrid(referenceDate = new Date()): CalendarDayCell[] {
+export function buildCurrentWeekGrid(referenceDate = new Date(), today = new Date()): CalendarDayCell[] {
   const monday = getStartOfWeek(referenceDate)
   const referenceMonth = referenceDate.getMonth()
 
@@ -39,7 +39,7 @@ export function buildCurrentWeekGrid(referenceDate = new Date()): CalendarDayCel
       date,
       dayNumber: date.getDate(),
       isCurrentMonth: date.getMonth() === referenceMonth,
-      isToday: isSameDay(date, referenceDate),
+      isToday: isSameDay(date, today),
     }
   })
 }

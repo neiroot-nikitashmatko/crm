@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { NIcon, NPopover, NSelect } from 'naive-ui'
-import { FunnelOutline } from '@vicons/ionicons5'
+import { ChevronBackOutline, ChevronForwardOutline, FunnelOutline } from '@vicons/ionicons5'
 import {
   PRODUCTION_CALENDAR_VIEW_OPTIONS,
   type ProductionCalendarViewMode,
@@ -9,6 +9,10 @@ import {
 
 const viewMode = defineModel<ProductionCalendarViewMode>('viewMode', { required: true })
 const employeeFilter = defineModel<string | null>('employeeFilter', { required: true })
+
+const emit = defineEmits<{
+  'shift-period': [direction: -1 | 1]
+}>()
 
 const isFilterPopoverOpen = ref(false)
 
@@ -22,6 +26,14 @@ const employeeOptions = computed(() => [
 
 const filterButtonTitle = computed(() =>
   employeeFilter.value ? `Фильтр: ${employeeFilter.value}` : 'Фильтр: все сотрудники',
+)
+
+const previousPeriodTitle = computed(() =>
+  viewMode.value === 'week' ? 'Предыдущая неделя' : 'Предыдущий месяц',
+)
+
+const nextPeriodTitle = computed(() =>
+  viewMode.value === 'week' ? 'Следующая неделя' : 'Следующий месяц',
 )
 
 const employeeSelectValue = computed<string>({
@@ -65,6 +77,36 @@ const employeeSelectValue = computed<string>({
           />
         </div>
       </NPopover>
+
+      <div
+        class="production-calendar-section-header__period-nav"
+        role="group"
+        aria-label="Переключение периода"
+      >
+        <button
+          type="button"
+          class="production-calendar-section-header__period-btn"
+          :title="previousPeriodTitle"
+          :aria-label="previousPeriodTitle"
+          @click="emit('shift-period', -1)"
+        >
+          <NIcon :size="18">
+            <ChevronBackOutline />
+          </NIcon>
+        </button>
+
+        <button
+          type="button"
+          class="production-calendar-section-header__period-btn"
+          :title="nextPeriodTitle"
+          :aria-label="nextPeriodTitle"
+          @click="emit('shift-period', 1)"
+        >
+          <NIcon :size="18">
+            <ChevronForwardOutline />
+          </NIcon>
+        </button>
+      </div>
 
       <div
         class="production-calendar-section-header__view-switch"
@@ -128,6 +170,32 @@ const employeeSelectValue = computed<string>({
 }
 
 .production-calendar-section-header__filter-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1a202c;
+}
+
+.production-calendar-section-header__period-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.production-calendar-section-header__period-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.production-calendar-section-header__period-btn:hover {
   background: #f8fafc;
   border-color: #cbd5e1;
   color: #1a202c;

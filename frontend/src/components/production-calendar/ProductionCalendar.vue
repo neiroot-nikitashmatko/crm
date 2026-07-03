@@ -18,6 +18,7 @@ import {
 
 const props = defineProps<{
   viewMode: ProductionCalendarViewMode
+  selectedDate: Date
   employeeFilter?: string | null
 }>()
 
@@ -28,8 +29,6 @@ const emit = defineEmits<{
 const { deals, loadDeals } = useDeals()
 
 const today = new Date()
-const currentYear = today.getFullYear()
-const currentMonth = today.getMonth()
 
 const weekdayLabels = getWeekdayLabels()
 const filteredDeals = computed(() => {
@@ -41,10 +40,10 @@ const entriesByDay = computed(() => buildProductionEntriesByDay(filteredDeals.va
 
 const weeks = computed(() => {
   if (props.viewMode === 'week') {
-    return [buildCurrentWeekGrid(today)]
+    return [buildCurrentWeekGrid(props.selectedDate, today)]
   }
 
-  return splitIntoWeeks(buildMonthGrid(currentYear, currentMonth, today))
+  return splitIntoWeeks(buildMonthGrid(props.selectedDate.getFullYear(), props.selectedDate.getMonth(), today))
 })
 
 const calendarTitle = computed(() => {
@@ -52,7 +51,7 @@ const calendarTitle = computed(() => {
     return formatWeekTitle(weeks.value[0] ?? [])
   }
 
-  return formatMonthTitle(currentYear, currentMonth)
+  return formatMonthTitle(props.selectedDate.getFullYear(), props.selectedDate.getMonth())
 })
 
 onMounted(() => {

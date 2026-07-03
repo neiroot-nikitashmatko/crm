@@ -7,6 +7,7 @@ import { useDeals } from '@/composables/useDeals'
 import type { ProductionCalendarViewMode } from '@/constants/productionCalendar'
 
 const viewMode = ref<ProductionCalendarViewMode>('month')
+const selectedDate = ref(new Date())
 const employeeFilter = ref<string | null>(null)
 const selectedDealId = ref<string | null>(null)
 const { deals, loadDeals } = useDeals()
@@ -39,6 +40,18 @@ async function handleOpenDeal(dealId: string) {
 function handleCloseDealSheet() {
   selectedDealId.value = null
 }
+
+function handleShiftPeriod(direction: -1 | 1) {
+  const nextDate = new Date(selectedDate.value)
+
+  if (viewMode.value === 'week') {
+    nextDate.setDate(nextDate.getDate() + direction * 7)
+  } else {
+    nextDate.setMonth(nextDate.getMonth() + direction)
+  }
+
+  selectedDate.value = nextDate
+}
 </script>
 
 <template>
@@ -46,11 +59,13 @@ function handleCloseDealSheet() {
     <ProductionCalendarSectionHeader
       v-model:view-mode="viewMode"
       v-model:employee-filter="employeeFilter"
+      @shift-period="handleShiftPeriod"
     />
 
     <div class="production-calendar-page__body">
       <ProductionCalendar
         :view-mode="viewMode"
+        :selected-date="selectedDate"
         :employee-filter="employeeFilter"
         @open-deal="handleOpenDeal"
       />
