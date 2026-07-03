@@ -10,6 +10,27 @@ import { AUTH_USER_STORAGE_KEY, getAuthToken } from '@/api/session'
 
 const user = ref<AuthUser | null>(null)
 
+const managerSections = new Set([
+  'leads',
+  'deals',
+  'tasks',
+  'products-catalog',
+  'production-calendar',
+])
+
+const masterSections = new Set([
+  'leads',
+  'deals',
+  'production-calendar',
+])
+
+function normalizePosition(position?: string): 'manager' | 'master' | '' {
+  const normalized = position?.trim().toLocaleLowerCase('ru-RU') ?? ''
+  if (normalized.includes('мастер')) return 'master'
+  if (normalized.includes('менеджер')) return 'manager'
+  return ''
+}
+
 function loadStoredUser() {
   if (typeof window === 'undefined') return
   const token = getAuthToken()
@@ -26,6 +47,7 @@ function loadStoredUser() {
       id: parsed.id,
       phone: parsed.phone,
       role: parsed.role,
+      position: parsed.position,
       firstName: parsed.firstName,
       lastName: parsed.lastName,
       patronymic: parsed.patronymic,
@@ -41,6 +63,24 @@ loadStoredUser()
 export function useAuth() {
   const isAuthenticated = computed(() => user.value !== null && Boolean(getAuthToken()))
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const rawPosition = computed(() => user.value?.position?.trim() ?? '')
+  const position = computed(() => normalizePosition(user.value?.position))
+
+  function canAccessSection(sectionName: string): boolean {
+    if (isAdmin.value) return true
+    if (position.value === 'manager') return managerSections.has(sectionName)
+    if (position.value === 'master') return masterSections.has(sectionName)
+
+    // Existing sessions created before position was returned by the API should not lock users out.
+    if (rawPosition.value === '') return managerSections.has(sectionName)
+
+    return masterSections.has(sectionName)
+  }
+
+  function getDefaultRouteName(): string {
+    if (canAccessSection('leads')) return 'leads'
+    return 'login'
+  }
 
   async function login(phone: string, password: string): Promise<{ ok: boolean; message?: string }> {
     try {
@@ -68,6 +108,8 @@ export function useAuth() {
     user,
     isAuthenticated,
     isAdmin,
+    canAccessSection,
+    getDefaultRouteName,
     login,
     logout,
   }

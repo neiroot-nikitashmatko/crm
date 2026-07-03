@@ -17,6 +17,10 @@ var (
 		"admin":   {},
 		"manager": {},
 	}
+	validPositions = map[string]struct{}{
+		"Менеджер": {},
+		"Мастер":   {},
+	}
 )
 
 type UserService struct {
@@ -90,6 +94,9 @@ func normalizeCreateUserInput(input model.CreateUserInput) (model.CreateUserInpu
 	if input.Position == "" {
 		return model.CreateUserInput{}, errors.New("должность обязательна")
 	}
+	if _, ok := validPositions[input.Position]; !ok {
+		return model.CreateUserInput{}, errors.New("некорректная должность")
+	}
 	if input.Phone == "" || !phonePattern.MatchString(input.Phone) {
 		return model.CreateUserInput{}, errors.New("некорректный телефон")
 	}
@@ -141,6 +148,9 @@ func normalizeUpdateUserInput(input model.UpdateUserInput) (model.UpdateUserInpu
 	}
 	if input.Position == "" {
 		return model.UpdateUserInput{}, false, errors.New("должность обязательна")
+	}
+	if _, ok := validPositions[input.Position]; !ok {
+		return model.UpdateUserInput{}, false, errors.New("некорректная должность")
 	}
 	if input.Phone == "" || !phonePattern.MatchString(input.Phone) {
 		return model.UpdateUserInput{}, false, errors.New("некорректный телефон")

@@ -5,7 +5,12 @@ import AppBottomSheet from '@/components/common/AppBottomSheet.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
 import { birthDateFromTimestamp, birthDateToTimestamp, UsersApiError } from '@/api/users'
 import { useEmployees } from '@/composables/useEmployees'
-import type { Employee, EmployeeRole } from '@/types/employee'
+import {
+  EMPLOYEE_POSITION_OPTIONS,
+  EMPLOYEE_ROLE_OPTIONS,
+  normalizeEmployeePosition,
+} from '@/constants/employees'
+import type { Employee, EmployeePosition, EmployeeRole } from '@/types/employee'
 import { isPhoneFilled, normalizePhone } from '@/utils/phone'
 
 const show = defineModel<boolean>('show', { required: true })
@@ -63,14 +68,9 @@ const employeeForm = reactive({
   birthDate: null as number | null,
   phone: '',
   password: '',
-  position: '',
+  position: null as EmployeePosition | null,
   role: null as EmployeeRole | null,
 })
-
-const roleOptions = [
-  { label: 'Администратор', value: 'admin' as const },
-  { label: 'Пользователь', value: 'manager' as const },
-]
 
 const canSubmit = computed(
   () =>
@@ -79,7 +79,7 @@ const canSubmit = computed(
     employeeForm.patronymic.trim().length > 0 &&
     employeeForm.birthDate !== null &&
     isPhoneFilled(employeeForm.phone) &&
-    employeeForm.position.trim().length > 0 &&
+    employeeForm.position !== null &&
     employeeForm.role !== null,
 )
 
@@ -90,7 +90,7 @@ function fillFormFromEmployee(employee: Employee) {
   employeeForm.birthDate = birthDateToTimestamp(employee.birthDate)
   employeeForm.phone = employee.phone
   employeeForm.password = ''
-  employeeForm.position = employee.position
+  employeeForm.position = normalizeEmployeePosition(employee.position)
   employeeForm.role = employee.role
   errorMessage.value = ''
 }
@@ -100,13 +100,13 @@ function handlePhoneInput(value: string) {
 }
 
 function handleSubmit() {
-  if (!canSubmit.value || isSubmitting.value || employeeForm.role === null) return
+  if (!canSubmit.value || isSubmitting.value || employeeForm.role === null || employeeForm.position === null) return
 
   void submitEmployee()
 }
 
 async function submitEmployee() {
-  if (employeeForm.role === null) return
+  if (employeeForm.role === null || employeeForm.position === null) return
 
   isSubmitting.value = true
   errorMessage.value = ''
@@ -126,7 +126,7 @@ async function submitEmployee() {
       birthDate,
       phone: employeeForm.phone.trim(),
       password: employeeForm.password,
-      position: employeeForm.position.trim(),
+      position: employeeForm.position,
       role: employeeForm.role,
     })
     emit('saved', updated)
@@ -263,12 +263,12 @@ watch(
               Должность
               <span class="employee-edit-form__required" aria-hidden="true">*</span>
             </span>
-            <NInput
+            <NSelect
               v-model:value="employeeForm.position"
               class="employee-edit-form__control"
-              :theme-overrides="fieldInputTheme"
-              placeholder="Например, менеджер по продажам"
-              autocomplete="off"
+              :theme-overrides="fieldSelectTheme"
+              :options="EMPLOYEE_POSITION_OPTIONS"
+              placeholder="Выберите должность"
             />
           </label>
 
@@ -281,7 +281,7 @@ watch(
               v-model:value="employeeForm.role"
               class="employee-edit-form__control"
               :theme-overrides="fieldSelectTheme"
-              :options="roleOptions"
+              :options="EMPLOYEE_ROLE_OPTIONS"
               placeholder="Выберите роль"
             />
           </label>

@@ -9,6 +9,7 @@ interface LoginResponseUser {
   id: string
   phone: string
   role: string
+  position?: string
   firstName?: string
   lastName?: string
   patronymic?: string

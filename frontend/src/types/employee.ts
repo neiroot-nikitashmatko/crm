@@ -1,4 +1,5 @@
 export type EmployeeRole = 'admin' | 'manager'
+export type EmployeePosition = 'Менеджер' | 'Мастер'
 
 export interface Employee {
   id: string
@@ -7,7 +8,7 @@ export interface Employee {
   patronymic: string
   phone: string
   role: EmployeeRole
-  position: string
+  position: EmployeePosition | string
   birthDate?: string | null
   isActive: boolean
   createdAt: number
@@ -21,7 +22,7 @@ export interface CreateEmployeeInput {
   birthDate: string
   phone: string
   password: string
-  position: string
+  position: EmployeePosition
   role: EmployeeRole
 }
 
@@ -32,6 +33,6 @@ export interface UpdateEmployeeInput {
   birthDate: string
   phone: string
   password: string
-  position: string
+  position: EmployeePosition
   role: EmployeeRole
 }

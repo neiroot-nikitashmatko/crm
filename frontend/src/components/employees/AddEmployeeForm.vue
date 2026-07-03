@@ -5,7 +5,8 @@ import { NDatePicker, NInput, NSelect } from 'naive-ui'
 import AppModalButton from '@/components/common/AppModalButton.vue'
 import { birthDateFromTimestamp, UsersApiError } from '@/api/users'
 import { useEmployees } from '@/composables/useEmployees'
-import type { EmployeeRole } from '@/types/employee'
+import { EMPLOYEE_POSITION_OPTIONS, EMPLOYEE_ROLE_OPTIONS } from '@/constants/employees'
+import type { EmployeePosition, EmployeeRole } from '@/types/employee'
 import { isPhoneFilled, normalizePhone, PHONE_PREFIX } from '@/utils/phone'
 
 const router = useRouter()
@@ -53,14 +54,9 @@ const employeeForm = reactive({
   birthDate: null as number | null,
   phone: PHONE_PREFIX,
   password: '',
-  position: '',
+  position: null as EmployeePosition | null,
   role: null as EmployeeRole | null,
 })
-
-const roleOptions = [
-  { label: 'Администратор', value: 'admin' as const },
-  { label: 'Пользователь', value: 'manager' as const },
-]
 
 const canSubmit = computed(
   () =>
@@ -70,7 +66,7 @@ const canSubmit = computed(
     employeeForm.birthDate !== null &&
     isPhoneFilled(employeeForm.phone) &&
     employeeForm.password.trim().length > 0 &&
-    employeeForm.position.trim().length > 0 &&
+    employeeForm.position !== null &&
     employeeForm.role !== null,
 )
 
@@ -81,7 +77,7 @@ function resetForm() {
   employeeForm.birthDate = null
   employeeForm.phone = PHONE_PREFIX
   employeeForm.password = ''
-  employeeForm.position = ''
+  employeeForm.position = null
   employeeForm.role = null
 }
 
@@ -90,13 +86,13 @@ function handlePhoneInput(value: string) {
 }
 
 function handleSubmit() {
-  if (!canSubmit.value || isSubmitting.value || employeeForm.role === null) return
+  if (!canSubmit.value || isSubmitting.value || employeeForm.role === null || employeeForm.position === null) return
 
   void submitEmployee()
 }
 
 async function submitEmployee() {
-  if (employeeForm.role === null) return
+  if (employeeForm.role === null || employeeForm.position === null) return
 
   isSubmitting.value = true
   errorMessage.value = ''
@@ -116,7 +112,7 @@ async function submitEmployee() {
       birthDate,
       phone: employeeForm.phone.trim(),
       password: employeeForm.password,
-      position: employeeForm.position.trim(),
+      position: employeeForm.position,
       role: employeeForm.role,
     })
     resetForm()
@@ -241,12 +237,13 @@ defineExpose({ resetForm })
             Должность
             <span class="add-employee-form__required" aria-hidden="true">*</span>
           </span>
-          <NInput
+          <NSelect
             v-model:value="employeeForm.position"
             class="add-employee-form__control"
-            :theme-overrides="fieldInputTheme"
-            placeholder="Например, менеджер по продажам"
-            autocomplete="off"
+            :theme-overrides="fieldSelectTheme"
+            :options="EMPLOYEE_POSITION_OPTIONS"
+            placeholder="Выберите должность"
+            clearable
           />
         </label>
 
@@ -259,7 +256,7 @@ defineExpose({ resetForm })
             v-model:value="employeeForm.role"
             class="add-employee-form__control"
             :theme-overrides="fieldSelectTheme"
-            :options="roleOptions"
+            :options="EMPLOYEE_ROLE_OPTIONS"
             placeholder="Выберите роль"
             clearable
           />

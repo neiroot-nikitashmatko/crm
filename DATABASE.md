@@ -33,35 +33,7 @@
 7. **Вложения** — файлы (фото, документы).
 8. **Активности** — лента: комментарии и системные события («сделка создана», «файл загружен»).
 
-```mermaid
-flowchart LR
-  users[users<br/>Сотрудники]
-  leads[leads<br/>Лиды]
-  deals[deals<br/>Сделки]
-  tasks[tasks<br/>Задачи]
-  catalog[catalog_products<br/>Каталог]
-  lead_prod[lead_products]
-  deal_prod[deal_products]
-  attach[attachments]
-  act[activities]
 
-  users --> leads
-  users --> deals
-  users --> tasks
-  leads --> deals
-  leads --> lead_prod
-  deals --> deal_prod
-  catalog -.->|выбор в UI| lead_prod
-  catalog -.->|выбор в UI| deal_prod
-  leads --> tasks
-  deals --> tasks
-  deals --> attach
-  tasks --> attach
-  deals --> act
-  tasks --> act
-```
-
----
 
 ## 3. Все таблицы (кратко)
 
@@ -380,71 +352,3 @@ backend/migrations/
 
 После создания сделки **источник правды по товарам** — `deal_products`. Данные в лиде могут остаться для истории.
 
----
-
-## 11. Полезные команды (для проверки на сервере)
-
-Подключиться к БД (пример):
-
-```bash
-psql "$DATABASE_URL"
-```
-
-Посмотреть все таблицы:
-
-```sql
-\dt
-```
-
-Сколько записей (пример):
-
-```sql
-SELECT 'leads' AS t, COUNT(*) FROM leads WHERE deleted_at IS NULL
-UNION ALL SELECT 'deals', COUNT(*) FROM deals WHERE deleted_at IS NULL
-UNION ALL SELECT 'tasks', COUNT(*) FROM tasks
-UNION ALL SELECT 'users', COUNT(*) FROM users WHERE is_active;
-```
-
----
-
-## 12. Бэкап (напоминание перед выгрузкой)
-
-Перед обновлениями на сервере делай резервную копию:
-
-```bash
-pg_dump "$DATABASE_URL" -Fc -f proclients_backup_$(date +%Y%m%d).dump
-```
-
-Восстановление (осторожно, перезапишет данные):
-
-```bash
-pg_restore -d "$DATABASE_URL" --clean --if-exists proclients_backup_YYYYMMDD.dump
-```
-
----
-
-## 13. Список миграций (хронология)
-
-| № | Файл | Что добавил |
-|---|------|-------------|
-| 001 | `create_users` | Пользователи, роли |
-| 002 | `seed_initial_admin` | (устарел — админ вручную) |
-| 003 | `create_leads` | Лиды |
-| 004 | `create_deals` | Сделки |
-| 005 | `create_tasks` | Задачи |
-| 006 | `create_deal_products` | Товары в сделке |
-| 007 | `add_soft_delete` | `deleted_at` у лидов/сделок |
-| 008 | `add_user_name_fields` | ФИО в users |
-| 009 | `create_catalog_products` | Каталог |
-| 010 | `add_deal_failure_reason` | Причина провала сделки |
-| 011 | `add_lead_failure_reason` | Причина провала лида |
-| 012 | `add_deal_pickup_delivery` | Самовывоз/доставка в сделке |
-| 013 | `add_lead_pickup_delivery` | Самовывоз/доставка в лиде |
-| 014 | `add_user_position` | Должность сотрудника |
-| 015 | `create_attachments` | Файлы |
-| 016 | `create_activities` | Лента активностей |
-| 017 | `add_lead_products_and_production` | Товары и производство в лиде |
-
----
-
-*Документ актуален для схемы после миграции **017**. При добавлении новых миграций обнови этот файл.*

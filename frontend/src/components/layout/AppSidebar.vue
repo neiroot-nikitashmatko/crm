@@ -21,19 +21,28 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
-const { isAdmin } = useAuth()
+const { isAdmin, canAccessSection } = useAuth()
 
 const menuItems = [
-  { label: 'Лиды', name: 'leads', icon: PeopleOutline, adminOnly: false },
-  { label: 'Сделки', name: 'deals', icon: BriefcaseOutline, adminOnly: false },
-  { label: 'Задачи', name: 'tasks', icon: CheckboxOutline, adminOnly: false },
-  { label: 'Каталог товаров', name: 'products-catalog', icon: CubeOutline, adminOnly: false },
-  { label: 'Календарь производства', name: 'production-calendar', icon: CalendarOutline, adminOnly: false },
-  { label: 'Сотрудники', name: 'employees-list', icon: IdCardOutline, adminOnly: true },
+  { label: 'Лиды', name: 'leads', sectionName: 'leads', icon: PeopleOutline, adminOnly: false },
+  { label: 'Сделки', name: 'deals', sectionName: 'deals', icon: BriefcaseOutline, adminOnly: false },
+  { label: 'Задачи', name: 'tasks', sectionName: 'tasks', icon: CheckboxOutline, adminOnly: false },
+  { label: 'Каталог товаров', name: 'products-catalog', sectionName: 'products-catalog', icon: CubeOutline, adminOnly: false },
+  {
+    label: 'Календарь производства',
+    name: 'production-calendar',
+    sectionName: 'production-calendar',
+    icon: CalendarOutline,
+    adminOnly: false,
+  },
+  { label: 'Сотрудники', name: 'employees-list', sectionName: 'employees', icon: IdCardOutline, adminOnly: true },
 ]
 
 const visibleMenuItems = computed(() =>
-  menuItems.filter((item) => !item.adminOnly || isAdmin.value),
+  menuItems.filter((item) => {
+    if (item.adminOnly) return isAdmin.value
+    return canAccessSection(item.sectionName)
+  }),
 )
 
 const activeName = computed(() => {

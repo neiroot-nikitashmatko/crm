@@ -4,6 +4,7 @@ type AuthUser struct {
 	ID         string `json:"id"`
 	Phone      string `json:"phone"`
 	Role       string `json:"role"`
+	Position   string `json:"position"`
 	FirstName  string `json:"firstName"`
 	LastName   string `json:"lastName"`
 	Patronymic string `json:"patronymic"`

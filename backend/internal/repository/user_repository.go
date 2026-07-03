@@ -27,6 +27,7 @@ SELECT
   id::text,
   phone,
   role::text,
+  COALESCE(position, ''),
   COALESCE(first_name, ''),
   COALESCE(last_name, ''),
   COALESCE(patronymic, '')
@@ -41,6 +42,7 @@ LIMIT 1
 		&user.ID,
 		&user.Phone,
 		&user.Role,
+		&user.Position,
 		&user.FirstName,
 		&user.LastName,
 		&user.Patronymic,

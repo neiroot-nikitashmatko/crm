@@ -20,31 +20,31 @@ const router = createRouter({
           path: 'leads',
           name: 'leads',
           component: () => import('@/views/LeadsView.vue'),
-          meta: { title: 'Лиды' },
+          meta: { title: 'Лиды', sectionName: 'leads' },
         },
         {
           path: 'deals',
           name: 'deals',
           component: () => import('@/views/DealsView.vue'),
-          meta: { title: 'Сделки' },
+          meta: { title: 'Сделки', sectionName: 'deals' },
         },
         {
           path: 'tasks',
           name: 'tasks',
           component: () => import('@/views/TasksView.vue'),
-          meta: { title: 'Задачи' },
+          meta: { title: 'Задачи', sectionName: 'tasks' },
         },
         {
           path: 'products-catalog',
           name: 'products-catalog',
           component: () => import('@/views/ProductsCatalogView.vue'),
-          meta: { title: 'Каталог товаров' },
+          meta: { title: 'Каталог товаров', sectionName: 'products-catalog' },
         },
         {
           path: 'production-calendar',
           name: 'production-calendar',
           component: () => import('@/views/ProductionCalendarView.vue'),
-          meta: { title: 'Календарь производства' },
+          meta: { title: 'Календарь производства', sectionName: 'production-calendar' },
         },
         {
           path: 'employees',
@@ -72,11 +72,11 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const { isAuthenticated, isAdmin } = useAuth()
+  const { isAuthenticated, isAdmin, canAccessSection, getDefaultRouteName } = useAuth()
 
   if (to.meta.public) {
     if (to.name === 'login' && isAuthenticated.value) {
-      return { path: '/leads' }
+      return { name: getDefaultRouteName() }
     }
 
     return true
@@ -90,7 +90,12 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.requiresAdmin && !isAdmin.value) {
-    return { path: '/leads' }
+    return { name: getDefaultRouteName() }
+  }
+
+  const sectionName = typeof to.meta.sectionName === 'string' ? to.meta.sectionName : ''
+  if (sectionName && !canAccessSection(sectionName)) {
+    return { name: getDefaultRouteName() }
   }
 
   return true
