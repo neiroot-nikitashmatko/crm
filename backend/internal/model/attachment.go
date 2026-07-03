@@ -3,6 +3,7 @@ package model
 const (
 	AttachmentEntityDeal = "deal"
 	AttachmentEntityTask = "task"
+	AttachmentEntityLead = "lead"
 )
 
 const MaxAttachmentSizeBytes = 10 * 1024 * 1024

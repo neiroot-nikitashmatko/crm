@@ -63,11 +63,12 @@ git pull
 
 ## 5. Если есть новые миграции
 
-Если в изменениях появился новый файл вида `backend/migrations/018_...up.sql`, применяй только его:
+Если в изменениях появились новые файлы миграций, применяй только их (по порядку номера):
 
 ```bash
 export PGPASSWORD='ProclientsDb2026'
-psql -U proclients -d proclients -h localhost -f backend/migrations/018_название.up.sql
+psql -U proclients -d proclients -h localhost -f backend/migrations/018_allow_lead_attachments_and_activities.up.sql
+psql -U proclients -d proclients -h localhost -f backend/migrations/019_backfill_lead_created_activities.up.sql
 ```
 
 Если миграций нет — этот шаг пропусти.

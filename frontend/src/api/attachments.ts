@@ -65,6 +65,18 @@ export async function uploadDealAttachments(dealId: string, files: File[]): Prom
   }
 }
 
+export async function uploadLeadAttachments(leadId: string, files: File[]): Promise<UploadAttachmentsResult> {
+  try {
+    const payload = await uploadMultipart<AttachmentsListResponse>(
+      `/api/v1/leads/${leadId}/attachments`,
+      files,
+    )
+    return normalizeUploadResult(payload)
+  } catch (error) {
+    wrapApiError(error)
+  }
+}
+
 export async function uploadTaskAttachments(taskId: string, files: File[]): Promise<UploadAttachmentsResult> {
   try {
     const payload = await uploadMultipart<AttachmentsListResponse>(
@@ -88,17 +100,47 @@ export async function deleteAttachment(attachmentId: string): Promise<DeleteAtta
   }
 }
 
-export async function downloadAttachmentFile(attachmentId: string, fileName: string): Promise<void> {
+export async function fetchAttachmentBlob(attachmentId: string): Promise<Blob> {
   try {
-    const blob = await requestBlob(`/api/v1/attachments/${attachmentId}/content`, {
+    return await requestBlob(`/api/v1/attachments/${attachmentId}/content`, {
       method: 'GET',
     })
+  } catch (error) {
+    wrapApiError(error)
+  }
+}
+
+export async function downloadAttachmentFile(attachmentId: string, fileName: string): Promise<void> {
+  try {
+    const blob = await fetchAttachmentBlob(attachmentId)
     const objectUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = objectUrl
     link.download = fileName
     link.click()
     URL.revokeObjectURL(objectUrl)
+  } catch (error) {
+    wrapApiError(error)
+  }
+}
+
+const ATTACHMENT_TAB_URL_TTL_MS = 5 * 60 * 1000
+
+export async function openAttachmentInNewTab(attachmentId: string, mimeType = ''): Promise<void> {
+  try {
+    const blob = await fetchAttachmentBlob(attachmentId)
+    const resolvedMimeType = blob.type || mimeType || 'application/octet-stream'
+    const previewBlob =
+      blob.type === resolvedMimeType ? blob : new Blob([await blob.arrayBuffer()], { type: resolvedMimeType })
+    const objectUrl = URL.createObjectURL(previewBlob)
+    const openedTab = window.open(objectUrl, '_blank', 'noopener,noreferrer')
+
+    if (!openedTab) {
+      URL.revokeObjectURL(objectUrl)
+      throw new AttachmentsApiError('Браузер заблокировал открытие новой вкладки', 0)
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), ATTACHMENT_TAB_URL_TTL_MS)
   } catch (error) {
     wrapApiError(error)
   }

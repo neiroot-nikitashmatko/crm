@@ -3,6 +3,7 @@ package model
 const (
 	ActivityEntityDeal = "deal"
 	ActivityEntityTask = "task"
+	ActivityEntityLead = "lead"
 
 	ActivityTypeSystem  = "system"
 	ActivityTypeComment = "comment"

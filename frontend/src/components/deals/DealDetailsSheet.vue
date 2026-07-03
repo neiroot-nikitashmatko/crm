@@ -10,8 +10,6 @@ import {
   getDealColumnValidationResult,
   resolveDealKanbanColumnId,
 } from '@/utils/dealKanban'
-import { formatFileSize, getFileExtension } from '@/utils/file'
-import { downloadAttachmentFile } from '@/api/attachments'
 import {
   DELIVERY_SECTION_LOCKED_MESSAGE,
   isDeliverySectionLocked,
@@ -24,6 +22,7 @@ import TaskDetailsSheet from '@/components/tasks/TaskDetailsSheet.vue'
 import DateTimeField from '@/components/common/DateTimeField.vue'
 import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
+import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import { useDealProductRows } from '@/composables/useDealProductRows'
 import type { ProductRow } from '@/types/productRow'
@@ -686,14 +685,6 @@ async function uploadAttachments(files: File[]) {
   }
 }
 
-async function downloadAttachment(attachmentId: string, name: string) {
-  try {
-    await downloadAttachmentFile(attachmentId, name)
-  } catch (error) {
-    console.error('Не удалось скачать файл', error)
-  }
-}
-
 async function removeAttachment(attachmentId: string) {
   if (!selectedDeal.value) return
 
@@ -969,23 +960,10 @@ async function removeAttachment(attachmentId: string) {
                   Прикрепить файл
                 </button>
 
-                <ul v-if="selectedDeal.attachments.length > 0" class="deal-details-sheet__attachment-list">
-                  <li v-for="attachment in selectedDeal.attachments" :key="attachment.id" class="deal-details-sheet__attachment-item">
-                    <div class="deal-details-sheet__attachment-info">
-                      <p class="deal-details-sheet__attachment-name">{{ attachment.name }}</p>
-                      <p class="deal-details-sheet__attachment-meta">
-                        {{ formatFileSize(attachment.size) }}
-                        <span v-if="getFileExtension(attachment.name)">
-                          · {{ getFileExtension(attachment.name).toUpperCase() }}
-                        </span>
-                      </p>
-                    </div>
-                    <div class="deal-details-sheet__attachment-actions">
-                      <button type="button" class="deal-details-sheet__tiny-btn" @click="downloadAttachment(attachment.id, attachment.name)">Скачать</button>
-                      <button type="button" class="deal-details-sheet__tiny-btn deal-details-sheet__tiny-btn--danger" @click="removeAttachment(attachment.id)">Удалить</button>
-                    </div>
-                  </li>
-                </ul>
+                <EntityAttachmentList
+                  :attachments="selectedDeal.attachments"
+                  @remove="removeAttachment"
+                />
               </div>
             </div>
           </section>
@@ -1640,76 +1618,6 @@ async function removeAttachment(attachmentId: string) {
   border-color: #cbd5e1;
   background: #f8fafc;
   color: #1a202c;
-}
-
-.deal-details-sheet__attachment-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.deal-details-sheet__attachment-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 8px;
-}
-
-.deal-details-sheet__attachment-info {
-  min-width: 0;
-}
-
-.deal-details-sheet__attachment-name {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: #1a202c;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.deal-details-sheet__attachment-meta {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: #718096;
-}
-
-.deal-details-sheet__attachment-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 6px;
-}
-
-.deal-details-sheet__tiny-btn {
-  padding: 4px 8px;
-  border: 1px solid #d1d9e2;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #4a5568;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.deal-details-sheet__tiny-btn:hover {
-  border-color: #cbd5e1;
-  color: #1a202c;
-}
-
-.deal-details-sheet__tiny-btn--danger:hover {
-  border-color: #fecaca;
-  color: #dc2626;
 }
 
 .deal-details-sheet__timeline {

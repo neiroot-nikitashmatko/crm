@@ -243,6 +243,13 @@ func (r *AttachmentRepository) DealExists(ctx context.Context, dealID string) (b
 	return exists, err
 }
 
+func (r *AttachmentRepository) LeadExists(ctx context.Context, leadID string) (bool, error) {
+	const query = `SELECT EXISTS(SELECT 1 FROM leads WHERE id = $1::uuid AND deleted_at IS NULL)`
+	var exists bool
+	err := r.db.QueryRow(ctx, query, leadID).Scan(&exists)
+	return exists, err
+}
+
 func (r *AttachmentRepository) TaskExists(ctx context.Context, taskID string) (bool, error) {
 	const query = `SELECT EXISTS(SELECT 1 FROM tasks WHERE id = $1::uuid)`
 	var exists bool

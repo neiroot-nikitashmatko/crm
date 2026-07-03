@@ -1,4 +1,8 @@
 import type { DealProduct, PickupDelivery } from '@/types/deal'
+import type { StoredAttachment, StoredActivity } from '@/types/attachment'
+
+export type LeadAttachment = StoredAttachment
+export type LeadActivityEntry = StoredActivity
 
 export interface LeadProduction {
   nomenclature: string
@@ -25,4 +29,6 @@ export interface Lead extends NewLeadForm {
   pickupDelivery: PickupDelivery
   products: DealProduct[]
   production: LeadProduction
+  attachments: LeadAttachment[]
+  activities: LeadActivityEntry[]
 }

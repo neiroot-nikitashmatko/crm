@@ -26,6 +26,14 @@ func (s *ActivityService) ListByDeal(ctx context.Context, dealID string) ([]mode
 	return s.repo.ListByEntity(ctx, model.ActivityEntityDeal, dealID)
 }
 
+func (s *ActivityService) ListByLead(ctx context.Context, leadID string) ([]model.Activity, error) {
+	leadID = strings.TrimSpace(leadID)
+	if leadID == "" {
+		return nil, errors.New("invalid lead id")
+	}
+	return s.repo.ListByEntity(ctx, model.ActivityEntityLead, leadID)
+}
+
 func (s *ActivityService) ListByTask(ctx context.Context, taskID string) ([]model.Activity, error) {
 	taskID = strings.TrimSpace(taskID)
 	if taskID == "" {
@@ -55,6 +63,32 @@ func (s *ActivityService) AttachToDeals(ctx context.Context, deals []model.Deal)
 	for index := range deals {
 		if id := strings.TrimSpace(deals[index].ID); id != "" {
 			deals[index].Activities = activitiesByEntity[id]
+		}
+	}
+	return nil
+}
+
+func (s *ActivityService) AttachToLeads(ctx context.Context, leads []model.Lead) error {
+	if len(leads) == 0 {
+		return nil
+	}
+
+	ids := make([]string, 0, len(leads))
+	for index := range leads {
+		leads[index].Activities = nil
+		if id := strings.TrimSpace(leads[index].ID); id != "" {
+			ids = append(ids, id)
+		}
+	}
+
+	activitiesByEntity, err := s.repo.ListByEntityIDs(ctx, model.ActivityEntityLead, ids)
+	if err != nil {
+		return err
+	}
+
+	for index := range leads {
+		if id := strings.TrimSpace(leads[index].ID); id != "" {
+			leads[index].Activities = activitiesByEntity[id]
 		}
 	}
 	return nil
@@ -98,6 +132,18 @@ func (s *ActivityService) AttachToDeal(ctx context.Context, deal *model.Deal) er
 	return nil
 }
 
+func (s *ActivityService) AttachToLead(ctx context.Context, lead *model.Lead) error {
+	if lead == nil {
+		return nil
+	}
+	items, err := s.repo.ListByEntity(ctx, model.ActivityEntityLead, lead.ID)
+	if err != nil {
+		return err
+	}
+	lead.Activities = items
+	return nil
+}
+
 func (s *ActivityService) AttachToTask(ctx context.Context, task *model.Task) error {
 	if task == nil {
 		return nil
@@ -126,6 +172,25 @@ func (s *ActivityService) CreateComment(
 
 func (s *ActivityService) LogDealCreated(ctx context.Context, dealID string, authorID string) (model.Activity, error) {
 	return s.create(ctx, model.ActivityEntityDeal, dealID, authorID, model.ActivityTypeSystem, "Сделка создана")
+}
+
+func (s *ActivityService) LogLeadCreated(ctx context.Context, leadID string, authorID string) (model.Activity, error) {
+	return s.create(ctx, model.ActivityEntityLead, leadID, authorID, model.ActivityTypeSystem, "Лид создан")
+}
+
+func (s *ActivityService) LogLeadFilesUploaded(ctx context.Context, leadID string, authorID string, count int) (model.Activity, error) {
+	if count <= 0 {
+		return model.Activity{}, errors.New("invalid files count")
+	}
+	return s.create(ctx, model.ActivityEntityLead, leadID, authorID, model.ActivityTypeSystem, fmt.Sprintf("Прикреплен файл (%d)", count))
+}
+
+func (s *ActivityService) LogLeadFileRemoved(ctx context.Context, leadID string, authorID string, fileName string) (model.Activity, error) {
+	fileName = strings.TrimSpace(fileName)
+	if fileName == "" {
+		fileName = "файл"
+	}
+	return s.create(ctx, model.ActivityEntityLead, leadID, authorID, model.ActivityTypeSystem, "Удалён файл: "+fileName)
 }
 
 func (s *ActivityService) LogDealFailureReason(ctx context.Context, dealID string, authorID string, reason string) (model.Activity, error) {
@@ -192,6 +257,8 @@ func (s *ActivityService) create(
 	switch entityType {
 	case model.ActivityEntityDeal:
 		exists, err = s.repo.DealExists(ctx, entityID)
+	case model.ActivityEntityLead:
+		exists, err = s.repo.LeadExists(ctx, entityID)
 	case model.ActivityEntityTask:
 		exists, err = s.repo.TaskExists(ctx, entityID)
 	default:

@@ -11,11 +11,12 @@ import (
 )
 
 type LeadHandler struct {
-	service *service.LeadService
+	service     *service.LeadService
+	attachments *service.AttachmentService
 }
 
-func NewLeadHandler(service *service.LeadService) *LeadHandler {
-	return &LeadHandler{service: service}
+func NewLeadHandler(service *service.LeadService, attachments *service.AttachmentService) *LeadHandler {
+	return &LeadHandler{service: service, attachments: attachments}
 }
 
 func (h *LeadHandler) Collection(w http.ResponseWriter, r *http.Request) {
@@ -171,6 +172,31 @@ func (h *LeadHandler) Item(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"item": item})
+	case "attachments":
+		handleEntityAttachments(
+			w,
+			r,
+			func(userID string, filename string, mimeType string, content []byte) (any, error) {
+				return h.attachments.UploadToLead(r.Context(), leadID, userID, filename, mimeType, content)
+			},
+			func() (any, error) {
+				return h.attachments.ListByLead(r.Context(), leadID)
+			},
+			func(userID string, count int) (any, error) {
+				return h.attachments.LogLeadUploadBatch(r.Context(), leadID, userID, count)
+			},
+		)
+	case "activities":
+		handleEntityActivities(
+			w,
+			r,
+			func(userID string, text string) (any, error) {
+				return h.service.AddComment(r.Context(), leadID, userID, text)
+			},
+			func() (any, error) {
+				return h.service.ListActivities(r.Context(), leadID)
+			},
+		)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}

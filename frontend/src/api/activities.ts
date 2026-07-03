@@ -27,6 +27,18 @@ export async function createDealComment(dealId: string, text: string): Promise<S
   }
 }
 
+export async function createLeadComment(leadId: string, text: string): Promise<StoredActivity> {
+  try {
+    const payload = await requestJson<{ item: unknown }>(`/api/v1/leads/${leadId}/activities`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    })
+    return normalizeStoredActivity(payload.item)
+  } catch (error) {
+    wrapApiError(error)
+  }
+}
+
 export async function createTaskComment(taskId: string, text: string): Promise<StoredActivity> {
   try {
     const payload = await requestJson<{ item: unknown }>(`/api/v1/tasks/${taskId}/activities`, {

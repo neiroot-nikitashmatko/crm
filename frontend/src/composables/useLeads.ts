@@ -9,9 +9,12 @@ import {
   updateLeadProducts as patchLeadProducts,
   updateLeadProduction as patchLeadProduction,
 } from '@/api/leads'
+import { deleteAttachment, uploadLeadAttachments } from '@/api/attachments'
+import { createLeadComment } from '@/api/activities'
 import { useAuth } from '@/composables/useAuth'
+import { normalizeStoredActivity, normalizeStoredAttachment, type StoredActivity } from '@/types/attachment'
 import type { DealProduct, PickupDelivery } from '@/types/deal'
-import type { Lead, LeadProduction, NewLeadForm } from '@/types/lead'
+import type { Lead, LeadAttachment, LeadProduction, NewLeadForm } from '@/types/lead'
 
 const leads = ref<Lead[]>([])
 const isLoaded = ref(false)
@@ -67,6 +70,7 @@ function normalizePickupDelivery(raw: any): PickupDelivery {
 }
 
 export function normalizeLead(raw: any): Lead {
+  const createdBy = raw.createdBy ?? raw.created_by
   return {
     id: String(raw.id),
     leadNumber: Number(raw.leadNumber ?? raw.lead_number ?? 0),
@@ -77,17 +81,33 @@ export function normalizeLead(raw: any): Lead {
     columnId: String(raw.columnId ?? raw.column_id ?? 'new'),
     leadComments: String(raw.leadComments ?? raw.lead_comments ?? ''),
     failureReason: String(raw.failureReason ?? raw.failure_reason ?? ''),
-    createdBy: String(raw.createdBy ?? raw.created_by ?? ''),
+    createdBy: String(createdBy ?? ''),
     createdAt: Number(raw.createdAt ?? raw.created_at ?? Date.now()),
     updatedAt: Number(raw.updatedAt ?? raw.updated_at ?? Date.now()),
     pickupDelivery: normalizePickupDelivery(raw),
     products: normalizeProducts(raw),
     production: normalizeProduction(raw),
+    attachments: Array.isArray(raw.attachments)
+      ? raw.attachments.map((attachment: unknown) =>
+          normalizeStoredAttachment(attachment, String(createdBy ?? '')),
+        )
+      : [],
+    activities: Array.isArray(raw.activities)
+      ? raw.activities.map((activity: unknown) =>
+          normalizeStoredActivity(activity, String(createdBy ?? '')),
+        )
+      : [],
   }
 }
 
 function applyLeadUpdate(lead: Lead, raw: any) {
   Object.assign(lead, normalizeLead({ ...raw, id: lead.id }))
+}
+
+function prependLeadActivity(leadId: string, activity: StoredActivity) {
+  leads.value = leads.value.map((item) =>
+    item.id === leadId ? { ...item, activities: [activity, ...item.activities] } : item,
+  )
 }
 
 export function useLeads() {
@@ -132,6 +152,35 @@ export function useLeads() {
     applyLeadUpdate(lead, updatedLead)
   }
 
+  async function addLeadAttachments(leadId: string, files: File[]): Promise<LeadAttachment[]> {
+    const { items, activity } = await uploadLeadAttachments(leadId, files)
+    leads.value = leads.value.map((item) =>
+      item.id === leadId ? { ...item, attachments: [...items, ...item.attachments] } : item,
+    )
+    if (activity) {
+      prependLeadActivity(leadId, activity)
+    }
+    return items
+  }
+
+  async function removeLeadAttachment(leadId: string, attachmentId: string): Promise<void> {
+    const { activity } = await deleteAttachment(attachmentId)
+    leads.value = leads.value.map((item) =>
+      item.id === leadId
+        ? { ...item, attachments: item.attachments.filter((attachment) => attachment.id !== attachmentId) }
+        : item,
+    )
+    if (activity) {
+      prependLeadActivity(leadId, activity)
+    }
+  }
+
+  async function addLeadActivityComment(leadId: string, text: string): Promise<StoredActivity> {
+    const activity = await createLeadComment(leadId, text)
+    prependLeadActivity(leadId, activity)
+    return activity
+  }
+
   async function updateLeadPickupDelivery(leadId: string, pickupDelivery: PickupDelivery) {
     const lead = leads.value.find((item) => item.id === leadId)
     if (!lead) return normalizeLead(await patchLeadPickupDelivery(leadId, pickupDelivery))
@@ -172,6 +221,9 @@ export function useLeads() {
     addLead,
     moveLeadToColumn,
     updateLeadComment,
+    addLeadAttachments,
+    removeLeadAttachment,
+    addLeadActivityComment,
     updateLeadPickupDelivery,
     updateLeadProducts,
     updateLeadProduction,

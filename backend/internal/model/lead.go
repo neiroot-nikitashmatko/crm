@@ -16,6 +16,8 @@ type Lead struct {
 	PickupDelivery PickupDelivery `json:"pickupDelivery"`
 	Products       []DealProduct  `json:"products"`
 	Production     DealProduction `json:"production"`
+	Attachments    []Attachment   `json:"attachments"`
+	Activities     []Activity     `json:"activities"`
 }
 
 type CreateLeadInput struct {

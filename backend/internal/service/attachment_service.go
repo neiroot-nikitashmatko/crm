@@ -30,6 +30,14 @@ func (s *AttachmentService) ListByDeal(ctx context.Context, dealID string) ([]mo
 	return s.repo.ListByEntity(ctx, model.AttachmentEntityDeal, dealID)
 }
 
+func (s *AttachmentService) ListByLead(ctx context.Context, leadID string) ([]model.Attachment, error) {
+	leadID = strings.TrimSpace(leadID)
+	if leadID == "" {
+		return nil, errors.New("invalid lead id")
+	}
+	return s.repo.ListByEntity(ctx, model.AttachmentEntityLead, leadID)
+}
+
 func (s *AttachmentService) ListByTask(ctx context.Context, taskID string) ([]model.Attachment, error) {
 	taskID = strings.TrimSpace(taskID)
 	if taskID == "" {
@@ -59,6 +67,32 @@ func (s *AttachmentService) AttachToDeals(ctx context.Context, deals []model.Dea
 	for index := range deals {
 		if id := strings.TrimSpace(deals[index].ID); id != "" {
 			deals[index].Attachments = attachmentsByEntity[id]
+		}
+	}
+	return nil
+}
+
+func (s *AttachmentService) AttachToLeads(ctx context.Context, leads []model.Lead) error {
+	if len(leads) == 0 {
+		return nil
+	}
+
+	ids := make([]string, 0, len(leads))
+	for index := range leads {
+		leads[index].Attachments = nil
+		if id := strings.TrimSpace(leads[index].ID); id != "" {
+			ids = append(ids, id)
+		}
+	}
+
+	attachmentsByEntity, err := s.repo.ListByEntityIDs(ctx, model.AttachmentEntityLead, ids)
+	if err != nil {
+		return err
+	}
+
+	for index := range leads {
+		if id := strings.TrimSpace(leads[index].ID); id != "" {
+			leads[index].Attachments = attachmentsByEntity[id]
 		}
 	}
 	return nil
@@ -102,6 +136,18 @@ func (s *AttachmentService) AttachToDeal(ctx context.Context, deal *model.Deal) 
 	return nil
 }
 
+func (s *AttachmentService) AttachToLead(ctx context.Context, lead *model.Lead) error {
+	if lead == nil {
+		return nil
+	}
+	items, err := s.repo.ListByEntity(ctx, model.AttachmentEntityLead, lead.ID)
+	if err != nil {
+		return err
+	}
+	lead.Attachments = items
+	return nil
+}
+
 func (s *AttachmentService) AttachToTask(ctx context.Context, task *model.Task) error {
 	if task == nil {
 		return nil
@@ -123,6 +169,17 @@ func (s *AttachmentService) UploadToDeal(
 	content []byte,
 ) (model.Attachment, error) {
 	return s.upload(ctx, model.AttachmentEntityDeal, dealID, uploadedBy, filename, mimeType, content, s.repo.DealExists)
+}
+
+func (s *AttachmentService) UploadToLead(
+	ctx context.Context,
+	leadID string,
+	uploadedBy string,
+	filename string,
+	mimeType string,
+	content []byte,
+) (model.Attachment, error) {
+	return s.upload(ctx, model.AttachmentEntityLead, leadID, uploadedBy, filename, mimeType, content, s.repo.LeadExists)
 }
 
 func (s *AttachmentService) UploadToTask(
@@ -159,6 +216,14 @@ func (s *AttachmentService) Delete(ctx context.Context, attachmentID string, aut
 		return nil, err
 	}
 
+	if meta.EntityType == model.AttachmentEntityLead && strings.TrimSpace(authorID) != "" {
+		activity, err := s.activities.LogLeadFileRemoved(ctx, meta.EntityID, authorID, meta.Name)
+		if err != nil {
+			return nil, err
+		}
+		return &activity, nil
+	}
+
 	if meta.EntityType == model.AttachmentEntityTask && strings.TrimSpace(authorID) != "" {
 		activity, err := s.activities.LogTaskFileRemoved(ctx, meta.EntityID, authorID, meta.Name)
 		if err != nil {
@@ -172,6 +237,10 @@ func (s *AttachmentService) Delete(ctx context.Context, attachmentID string, aut
 
 func (s *AttachmentService) LogDealUploadBatch(ctx context.Context, dealID string, authorID string, count int) (model.Activity, error) {
 	return s.activities.LogDealFilesUploaded(ctx, dealID, authorID, count)
+}
+
+func (s *AttachmentService) LogLeadUploadBatch(ctx context.Context, leadID string, authorID string, count int) (model.Activity, error) {
+	return s.activities.LogLeadFilesUploaded(ctx, leadID, authorID, count)
 }
 
 func (s *AttachmentService) LogTaskUploadBatch(ctx context.Context, taskID string, authorID string, count int) (model.Activity, error) {

@@ -27,6 +27,7 @@ import TaskDetailsSheet from '../tasks/TaskDetailsSheet.vue'
 import DateTimeField from '@/components/common/DateTimeField.vue'
 import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
+import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import type { ProductRow } from '@/types/productRow'
 import { rowsToDealProducts } from '@/utils/products'
@@ -53,7 +54,18 @@ const TIME_PICKER_PROPS = {
 const router = useRouter()
 const route = useRoute()
 const { logout } = useAuth()
-const { leads, addLead, moveLeadToColumn, updateLeadComment, updateLeadPickupDelivery, updateLeadProduction, loadLeads, deleteLead } = useLeads()
+const {
+  leads,
+  addLead,
+  moveLeadToColumn,
+  updateLeadComment,
+  addLeadAttachments,
+  removeLeadAttachment,
+  updateLeadPickupDelivery,
+  updateLeadProduction,
+  loadLeads,
+  deleteLead,
+} = useLeads()
 const { addTask, completeLeadTasks, getLeadTasks, loadTasks } = useTasks()
 const { createDealFromLead, getActiveLeadDeal, getLeadDeal, loadDeals } = useDeals()
 const {
@@ -178,6 +190,10 @@ const leadTasks = computed<Task[]>(() => {
 
     return right.createdAt.getTime() - left.createdAt.getTime()
   })
+})
+const sortedLeadActivities = computed(() => {
+  if (!selectedLead.value) return []
+  return [...selectedLead.value.activities].sort((a, b) => b.createdAt - a.createdAt)
 })
 
 function getColumnLeads(columnId: string) {
@@ -810,6 +826,38 @@ async function persistLeadComment() {
   }
 }
 
+function triggerLeadAttachmentPick() {
+  ;(document.getElementById('lead-attachment-input') as HTMLInputElement | null)?.click()
+}
+
+function handleLeadAttachmentChange(event: Event) {
+  if (!selectedLead.value) return
+  const target = event.target as HTMLInputElement | null
+  const files = target?.files ? Array.from(target.files) : []
+  if (target) target.value = ''
+  if (files.length === 0) return
+
+  void uploadLeadFiles(selectedLead.value.id, files)
+}
+
+async function uploadLeadFiles(leadId: string, files: File[]) {
+  try {
+    await addLeadAttachments(leadId, files)
+  } catch (error) {
+    console.error('Не удалось загрузить вложения лида', error)
+  }
+}
+
+async function removeLeadAttachmentFile(attachmentId: string) {
+  if (!selectedLead.value) return
+
+  try {
+    await removeLeadAttachment(selectedLead.value.id, attachmentId)
+  } catch (error) {
+    console.error('Не удалось удалить файл лида', error)
+  }
+}
+
 </script>
 
 <template>
@@ -904,23 +952,24 @@ async function persistLeadComment() {
         </nav>
 
         <div class="lead-details-sheet__body">
-          <aside class="lead-details-sheet__sections">
-            <button
-              v-for="section in LEAD_DETAILS_SECTIONS"
-              :key="section.id"
-              type="button"
-              class="lead-details-sheet__section-btn"
-              :class="{
-                'lead-details-sheet__section-btn--active': activeDetailsSection === section.id,
-              }"
-              @click="activeDetailsSection = section.id"
-            >
-              {{ section.title }}
-            </button>
-          </aside>
+          <div class="lead-details-sheet__left">
+            <aside class="lead-details-sheet__sections">
+              <button
+                v-for="section in LEAD_DETAILS_SECTIONS"
+                :key="section.id"
+                type="button"
+                class="lead-details-sheet__section-btn"
+                :class="{
+                  'lead-details-sheet__section-btn--active': activeDetailsSection === section.id,
+                }"
+                @click="activeDetailsSection = section.id"
+              >
+                {{ section.title }}
+              </button>
+            </aside>
 
-          <section class="lead-details-sheet__content">
-            <div v-if="activeDetailsSection === 'lead-info'" class="lead-details-sheet__panel">
+            <section class="lead-details-sheet__content">
+              <div v-if="activeDetailsSection === 'lead-info'" class="lead-details-sheet__panel">
               <h3 class="lead-details-sheet__panel-title">Информация о лиде</h3>
 
               <dl class="lead-details-sheet__info-list">
@@ -965,17 +1014,6 @@ async function persistLeadComment() {
                   </div>
                 </div>
               </dl>
-
-              <label class="lead-details-sheet__field">
-                <span class="lead-details-sheet__label">Комментарии</span>
-                <textarea
-                  v-model="currentLeadComment"
-                  class="lead-details-sheet__textarea"
-                  rows="4"
-                  placeholder="Комментарий менеджера по разговору с клиентом"
-                  @blur="persistLeadComment"
-                />
-              </label>
             </div>
 
             <div v-else-if="activeDetailsSection === 'task'" class="lead-details-sheet__panel">
@@ -1155,7 +1193,59 @@ async function persistLeadComment() {
                 />
               </label>
             </div>
-          </section>
+            </section>
+          </div>
+
+          <aside class="lead-details-sheet__communication">
+            <section class="lead-details-sheet__side-block">
+              <h3 class="lead-details-sheet__side-title">Комментарий</h3>
+              <div class="lead-details-sheet__comment-box">
+                <textarea
+                  v-model="currentLeadComment"
+                  class="lead-details-sheet__comment-area"
+                  rows="4"
+                  placeholder="Комментарий менеджера по разговору с клиентом"
+                  @blur="persistLeadComment"
+                />
+
+                <div class="lead-details-sheet__comment-box-foot">
+                  <input id="lead-attachment-input" type="file" class="lead-details-sheet__file-input" multiple @change="handleLeadAttachmentChange" />
+                  <button type="button" class="lead-details-sheet__attachment-btn" @click="triggerLeadAttachmentPick">
+                    Прикрепить файл
+                  </button>
+
+                  <EntityAttachmentList
+                    :attachments="selectedLead.attachments"
+                    @remove="removeLeadAttachmentFile"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section class="lead-details-sheet__side-block lead-details-sheet__side-block--timeline">
+              <h3 class="lead-details-sheet__side-title">Таймлайн</h3>
+
+              <ul v-if="sortedLeadActivities.length > 0" class="lead-details-sheet__timeline">
+                <li
+                  v-for="entry in sortedLeadActivities"
+                  :key="entry.id"
+                  class="lead-details-sheet__timeline-entry"
+                  :class="{
+                    'lead-details-sheet__timeline-entry--comment': entry.type === 'comment',
+                    'lead-details-sheet__timeline-entry--system': entry.type === 'system',
+                  }"
+                >
+                  <div class="lead-details-sheet__timeline-entry-body">
+                    <p class="lead-details-sheet__timeline-text">{{ entry.text }}</p>
+                    <p class="lead-details-sheet__timeline-meta">
+                      {{ formatDateTime(entry.createdAt) }}
+                    </p>
+                  </div>
+                </li>
+              </ul>
+              <p v-else class="lead-details-sheet__timeline-empty">Таймлайн пока пуст</p>
+            </section>
+          </aside>
         </div>
       </section>
     </Transition>
@@ -1554,9 +1644,17 @@ async function persistLeadComment() {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 16px;
   padding: 16px;
+}
+
+.lead-details-sheet__left {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
 }
 
 .lead-details-sheet__sections {
@@ -1903,6 +2001,179 @@ async function persistLeadComment() {
   margin: 0;
   font-size: 14px;
   color: #4a5568;
+}
+
+.lead-details-sheet__communication {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 0 0 20px;
+  border-left: 1px solid #e2e8f0;
+  scrollbar-gutter: stable;
+}
+
+.lead-details-sheet__side-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lead-details-sheet__side-block--timeline {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.lead-details-sheet__side-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.lead-details-sheet__comment-box {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lead-details-sheet__comment-box:focus-within {
+  border-color: #cbd5e1;
+  box-shadow: 0 0 0 3px rgba(31, 136, 61, 0.08);
+}
+
+.lead-details-sheet__comment-area {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  background: #ffffff;
+  color: #1a202c;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 88px;
+}
+
+.lead-details-sheet__comment-area:focus {
+  outline: none;
+}
+
+.lead-details-sheet__comment-box-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.lead-details-sheet__file-input {
+  display: none;
+}
+
+.lead-details-sheet__attachment-btn {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1px solid #d1d9e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4a5568;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.lead-details-sheet__attachment-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #1a202c;
+}
+
+.lead-details-sheet__timeline {
+  margin: 0;
+  padding: 4px 0 0 14px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-left: 1px solid #e2e8f0;
+}
+
+.lead-details-sheet__timeline-entry {
+  position: relative;
+  padding: 0 0 14px 12px;
+}
+
+.lead-details-sheet__timeline-entry::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  box-shadow: 0 0 0 3px #ffffff;
+}
+
+.lead-details-sheet__timeline-entry--comment::before {
+  background: #1f883d;
+  box-shadow: 0 0 0 3px rgba(31, 136, 61, 0.14);
+}
+
+.lead-details-sheet__timeline-entry--system::before {
+  background: #cbd5e1;
+}
+
+.lead-details-sheet__timeline-entry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lead-details-sheet__timeline-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1a202c;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.lead-details-sheet__timeline-entry--system .lead-details-sheet__timeline-text {
+  color: #4a5568;
+}
+
+.lead-details-sheet__timeline-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #718096;
+}
+
+.lead-details-sheet__timeline-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #718096;
+}
+
+@media (max-width: 1200px) {
+  .lead-details-sheet__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lead-details-sheet__left {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .lead-details-sheet-enter-active,
