@@ -96,6 +96,19 @@ func (s *DealService) UpdateComment(ctx context.Context, dealID string, comment 
 	return s.enrichDeal(ctx, deal)
 }
 
+func (s *DealService) UpdateProfile(ctx context.Context, dealID string, firstName string, patronymic string) (model.Deal, error) {
+	firstName = strings.TrimSpace(firstName)
+	patronymic = strings.TrimSpace(patronymic)
+	if firstName == "" {
+		return model.Deal{}, errors.New("имя обязательно")
+	}
+	deal, err := s.repo.UpdateProfile(ctx, dealID, firstName, patronymic)
+	if err != nil {
+		return model.Deal{}, err
+	}
+	return s.enrichDeal(ctx, deal)
+}
+
 func (s *DealService) UpdateProductionDueAt(ctx context.Context, dealID string, dueAt *int64) (model.Deal, error) {
 	if strings.TrimSpace(dealID) == "" {
 		return model.Deal{}, errors.New("dealId is required")

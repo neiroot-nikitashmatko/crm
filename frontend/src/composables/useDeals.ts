@@ -8,6 +8,7 @@ import {
   updateDealProduction as updateDealProductionRequest,
   updateDealProductionDueAt as updateDealProductionDueAtRequest,
   updateDealProducts as updateDealProductsRequest,
+  updateDealProfile as updateDealProfileRequest,
   updateDealStatus as updateDealStatusRequest,
 } from '@/api/deals'
 import { deleteAttachment, uploadDealAttachments } from '@/api/attachments'
@@ -214,6 +215,16 @@ export function useDeals() {
     return updated
   }
 
+  async function updateDealProfile(dealId: string, firstName: string, patronymic: string) {
+    const prev = deals.value.find((item) => item.id === dealId)
+    const updated = mergeDealLocalState(
+      normalizeDeal(await updateDealProfileRequest(dealId, firstName, patronymic)),
+      prev,
+    )
+    deals.value = deals.value.map((item) => (item.id === dealId ? updated : item))
+    return updated
+  }
+
   async function updateDealProductionDueAt(dealId: string, dueAt: number | null) {
     const prev = deals.value.find((item) => item.id === dealId)
     const updated = mergeDealLocalState(
@@ -293,6 +304,7 @@ export function useDeals() {
     getActiveLeadDeal,
     createDealFromLead,
     updateDealComment,
+    updateDealProfile,
     updateDealProduction,
     updateDealProductionDueAt,
     updateDealPickupDelivery,

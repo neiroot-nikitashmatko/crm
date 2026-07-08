@@ -5,6 +5,7 @@ import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
 import { TrashOutline } from '@vicons/ionicons5'
 import { DEAL_KANBAN_COLUMNS } from '@/constants/deals'
 import { useDeals } from '@/composables/useDeals'
+import { useLeads } from '@/composables/useLeads'
 import { useTasks } from '@/composables/useTasks'
 import {
   getDealColumnValidationResult,
@@ -62,7 +63,8 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const { deals, deleteDeal, updateDealComment, updateDealPickupDelivery, updateDealProduction, updateDealStatus, addDealAttachments, removeDealAttachment } = useDeals()
+const { deals, deleteDeal, updateDealComment, updateDealProfile, updateDealPickupDelivery, updateDealProduction, updateDealStatus, addDealAttachments, removeDealAttachment } = useDeals()
+const { leads } = useLeads()
 const { getDealRows, setDealRows, hydrateDealRows, saveDealProductRows } = useDealProductRows()
 const { addTask, getDealTasks, loadTasks } = useTasks()
 
@@ -74,6 +76,8 @@ const isCreateTaskModalOpen = ref(false)
 const isTaskDateModalOpen = ref(false)
 const selectedDealTask = ref<Task | null>(null)
 const commentDraft = ref('')
+const firstNameDraft = ref('')
+const patronymicDraft = ref('')
 const isStatusValidationModalOpen = ref(false)
 const statusValidationMessage = ref('')
 const statusValidationTargetSection = ref<'production' | 'pickup' | 'delivery' | null>(null)
@@ -256,6 +260,8 @@ watch(
   () => {
     if (!selectedDeal.value) return
     commentDraft.value = selectedDeal.value.dealComments ?? ''
+    firstNameDraft.value = selectedDeal.value.firstName ?? ''
+    patronymicDraft.value = selectedDeal.value.patronymic ?? ''
     isStatusValidationModalOpen.value = false
     statusValidationMessage.value = ''
     statusValidationTargetSection.value = null
@@ -482,6 +488,44 @@ async function persistDealComment() {
     await updateDealComment(selectedDeal.value.id, commentDraft.value)
   } catch (error) {
     console.error('Не удалось сохранить комментарий сделки', error)
+  }
+}
+
+function syncLinkedLeadProfile(leadId: string | null | undefined, firstName: string, patronymic: string) {
+  if (!leadId) return
+  leads.value = leads.value.map((lead) =>
+    lead.id === leadId ? { ...lead, firstName, patronymic } : lead,
+  )
+}
+
+async function persistDealProfile() {
+  if (!selectedDeal.value) return
+
+  const firstName = firstNameDraft.value.trim()
+  const patronymic = patronymicDraft.value.trim()
+
+  if (!firstName) {
+    firstNameDraft.value = selectedDeal.value.firstName ?? ''
+    patronymicDraft.value = selectedDeal.value.patronymic ?? ''
+    return
+  }
+
+  if (
+    firstName === (selectedDeal.value.firstName ?? '').trim() &&
+    patronymic === (selectedDeal.value.patronymic ?? '').trim()
+  ) {
+    return
+  }
+
+  try {
+    const updated = await updateDealProfile(selectedDeal.value.id, firstName, patronymic)
+    firstNameDraft.value = updated.firstName
+    patronymicDraft.value = updated.patronymic
+    syncLinkedLeadProfile(updated.leadId, updated.firstName, updated.patronymic)
+  } catch (error) {
+    console.error('Не удалось сохранить имя/отчество сделки', error)
+    firstNameDraft.value = selectedDeal.value.firstName ?? ''
+    patronymicDraft.value = selectedDeal.value.patronymic ?? ''
   }
 }
 
@@ -765,8 +809,26 @@ async function removeAttachment(attachmentId: string) {
             <div v-if="activeSection === 'general'" class="deal-details-sheet__panel">
               <h3 class="deal-details-sheet__panel-title">Общая информация</h3>
               <dl class="deal-details-sheet__info-list">
-                <div class="deal-details-sheet__info-row"><dt>Имя</dt><dd>{{ selectedDeal.firstName || '—' }}</dd></div>
-                <div class="deal-details-sheet__info-row"><dt>Отчество</dt><dd>{{ selectedDeal.patronymic || '—' }}</dd></div>
+                <label class="deal-details-sheet__field">
+                  <span class="deal-details-sheet__label">Имя</span>
+                  <input
+                    v-model="firstNameDraft"
+                    type="text"
+                    class="deal-details-sheet__input"
+                    placeholder="Укажите имя"
+                    @blur="persistDealProfile"
+                  />
+                </label>
+                <label class="deal-details-sheet__field">
+                  <span class="deal-details-sheet__label">Отчество</span>
+                  <input
+                    v-model="patronymicDraft"
+                    type="text"
+                    class="deal-details-sheet__input"
+                    placeholder="Укажите отчество"
+                    @blur="persistDealProfile"
+                  />
+                </label>
                 <div class="deal-details-sheet__info-row"><dt>Телефон</dt><dd>{{ selectedDeal.phone }}</dd></div>
                 <div class="deal-details-sheet__info-row"><dt>Источник</dt><dd>{{ selectedDeal.trafficSource || '—' }}</dd></div>
                 <div class="deal-details-sheet__info-row"><dt>Сумма</dt><dd>{{ selectedDeal.totalAmount }} ₽</dd></div>

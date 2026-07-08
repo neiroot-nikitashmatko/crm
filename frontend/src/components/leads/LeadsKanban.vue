@@ -60,6 +60,7 @@ const {
   addLead,
   moveLeadToColumn,
   updateLeadComment,
+  updateLeadProfile,
   addLeadAttachments,
   removeLeadAttachment,
   updateLeadPickupDelivery,
@@ -68,7 +69,7 @@ const {
   deleteLead,
 } = useLeads()
 const { addTask, completeLeadTasks, getLeadTasks, loadTasks } = useTasks()
-const { createDealFromLead, getActiveLeadDeal, getLeadDeal, loadDeals } = useDeals()
+const { createDealFromLead, getActiveLeadDeal, getLeadDeal, loadDeals, deals } = useDeals()
 const {
   getDealRows,
   setDealRows,
@@ -121,6 +122,7 @@ const selectedLead = computed(() =>
 )
 const canConfirmFailureReason = computed(() => failureReasonDraft.value.trim().length > 0)
 const leadCommentDrafts = reactive<Record<string, string>>({})
+const leadProfileDrafts = reactive<Record<string, { firstName: string; patronymic: string }>>({})
 const currentLeadComment = computed({
   get: () => {
     if (!selectedLead.value) return ''
@@ -129,6 +131,34 @@ const currentLeadComment = computed({
   set: (value: string) => {
     if (!selectedLead.value) return
     leadCommentDrafts[selectedLead.value.id] = value
+  },
+})
+const currentLeadFirstName = computed({
+  get: () => {
+    if (!selectedLead.value) return ''
+    return leadProfileDrafts[selectedLead.value.id]?.firstName ?? selectedLead.value.firstName ?? ''
+  },
+  set: (value: string) => {
+    if (!selectedLead.value) return
+    const current = leadProfileDrafts[selectedLead.value.id] ?? {
+      firstName: selectedLead.value.firstName ?? '',
+      patronymic: selectedLead.value.patronymic ?? '',
+    }
+    leadProfileDrafts[selectedLead.value.id] = { ...current, firstName: value }
+  },
+})
+const currentLeadPatronymic = computed({
+  get: () => {
+    if (!selectedLead.value) return ''
+    return leadProfileDrafts[selectedLead.value.id]?.patronymic ?? selectedLead.value.patronymic ?? ''
+  },
+  set: (value: string) => {
+    if (!selectedLead.value) return
+    const current = leadProfileDrafts[selectedLead.value.id] ?? {
+      firstName: selectedLead.value.firstName ?? '',
+      patronymic: selectedLead.value.patronymic ?? '',
+    }
+    leadProfileDrafts[selectedLead.value.id] = { ...current, patronymic: value }
   },
 })
 const currentLeadProduction = computed<LeadProduction>(() => {
@@ -218,6 +248,7 @@ async function handleAddLead(columnId: string, payload: NewLeadForm) {
 function handleOpenLead(lead: Lead) {
   selectedLeadId.value = lead.id
   syncLeadCommentDraft(lead)
+  syncLeadProfileDraft(lead)
   syncLeadPickupDeliverySnapshot()
   syncLeadProductionSnapshot()
   hydrateLeadRows(lead.id, true)
@@ -894,6 +925,53 @@ function syncLeadCommentDraft(lead: Lead) {
   leadCommentDrafts[lead.id] = lead.leadComments ?? ''
 }
 
+function syncLeadProfileDraft(lead: Lead) {
+  leadProfileDrafts[lead.id] = {
+    firstName: lead.firstName ?? '',
+    patronymic: lead.patronymic ?? '',
+  }
+}
+
+function syncLinkedDealsProfile(leadId: string, firstName: string, patronymic: string) {
+  deals.value = deals.value.map((deal) =>
+    deal.leadId === leadId ? { ...deal, firstName, patronymic } : deal,
+  )
+}
+
+async function persistLeadProfile() {
+  if (!selectedLead.value) return
+
+  const draft = leadProfileDrafts[selectedLead.value.id] ?? {
+    firstName: selectedLead.value.firstName ?? '',
+    patronymic: selectedLead.value.patronymic ?? '',
+  }
+  const firstName = draft.firstName.trim()
+  const patronymic = draft.patronymic.trim()
+
+  if (!firstName) {
+    syncLeadProfileDraft(selectedLead.value)
+    return
+  }
+
+  if (
+    firstName === (selectedLead.value.firstName ?? '').trim() &&
+    patronymic === (selectedLead.value.patronymic ?? '').trim()
+  ) {
+    return
+  }
+
+  try {
+    const updated = await updateLeadProfile(selectedLead.value.id, firstName, patronymic)
+    if (updated) {
+      syncLeadProfileDraft(updated)
+      syncLinkedDealsProfile(updated.id, updated.firstName, updated.patronymic)
+    }
+  } catch (error) {
+    console.error('Не удалось сохранить имя/отчество лида', error)
+    syncLeadProfileDraft(selectedLead.value)
+  }
+}
+
 async function persistLeadComment() {
   if (!selectedLead.value) return
 
@@ -1058,14 +1136,26 @@ async function removeLeadAttachmentFile(attachmentId: string) {
 
               <dl class="lead-details-sheet__info-list">
                 <div class="lead-details-sheet__info-column">
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Имя</dt>
-                    <dd>{{ selectedLead.firstName || '—' }}</dd>
-                  </div>
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Отчество</dt>
-                    <dd>{{ selectedLead.patronymic || '—' }}</dd>
-                  </div>
+                  <label class="lead-details-sheet__field">
+                    <span class="lead-details-sheet__label">Имя</span>
+                    <input
+                      v-model="currentLeadFirstName"
+                      type="text"
+                      class="lead-details-sheet__input"
+                      placeholder="Укажите имя"
+                      @blur="persistLeadProfile"
+                    />
+                  </label>
+                  <label class="lead-details-sheet__field">
+                    <span class="lead-details-sheet__label">Отчество</span>
+                    <input
+                      v-model="currentLeadPatronymic"
+                      type="text"
+                      class="lead-details-sheet__input"
+                      placeholder="Укажите отчество"
+                      @blur="persistLeadProfile"
+                    />
+                  </label>
                   <div class="lead-details-sheet__info-row">
                     <dt>Телефон</dt>
                     <dd>{{ selectedLead.phone || '—' }}</dd>

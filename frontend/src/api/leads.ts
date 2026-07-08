@@ -69,6 +69,18 @@ export async function updateLeadComment(leadId: string, leadComments: string): P
   return response.item
 }
 
+export async function updateLeadProfile(
+  leadId: string,
+  firstName: string,
+  patronymic: string,
+): Promise<Lead> {
+  const response = await leadsRequestJson<LeadItemResponse>(`/api/v1/leads/${leadId}/profile`, {
+    method: 'PATCH',
+    body: JSON.stringify({ firstName, patronymic }),
+  })
+  return response.item
+}
+
 export async function updateLeadPickupDelivery(
   leadId: string,
   pickupDelivery: PickupDelivery,

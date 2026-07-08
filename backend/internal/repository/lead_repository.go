@@ -144,6 +144,44 @@ WHERE id = $1::uuid AND deleted_at IS NULL
 	return r.GetByID(ctx, leadID)
 }
 
+func (r *LeadRepository) UpdateProfile(ctx context.Context, leadID string, firstName string, patronymic string) (model.Lead, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return model.Lead{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
+UPDATE leads
+SET first_name = $2,
+    patronymic = $3,
+    updated_at = now()
+WHERE id = $1::uuid AND deleted_at IS NULL
+`, leadID, firstName, patronymic)
+	if err != nil {
+		return model.Lead{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return model.Lead{}, pgx.ErrNoRows
+	}
+
+	_, err = tx.Exec(ctx, `
+UPDATE deals
+SET first_name = $2,
+    patronymic = $3,
+    updated_at = now()
+WHERE lead_id = $1::uuid AND deleted_at IS NULL
+`, leadID, firstName, patronymic)
+	if err != nil {
+		return model.Lead{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.Lead{}, err
+	}
+	return r.GetByID(ctx, leadID)
+}
+
 func (r *LeadRepository) UpdatePickupDelivery(ctx context.Context, leadID string, input model.PickupDelivery) (model.Lead, error) {
 	_, err := r.db.Exec(ctx, `
 UPDATE leads

@@ -76,6 +76,19 @@ func (s *LeadService) UpdateComment(ctx context.Context, leadID string, comment 
 	return s.enrichLead(ctx, lead)
 }
 
+func (s *LeadService) UpdateProfile(ctx context.Context, leadID string, firstName string, patronymic string) (model.Lead, error) {
+	firstName = strings.TrimSpace(firstName)
+	patronymic = strings.TrimSpace(patronymic)
+	if firstName == "" {
+		return model.Lead{}, errors.New("имя обязательно")
+	}
+	lead, err := s.repo.UpdateProfile(ctx, leadID, firstName, patronymic)
+	if err != nil {
+		return model.Lead{}, err
+	}
+	return s.enrichLead(ctx, lead)
+}
+
 func (s *LeadService) UpdatePickupDelivery(ctx context.Context, leadID string, input model.PickupDelivery) (model.Lead, error) {
 	if strings.TrimSpace(leadID) == "" {
 		return model.Lead{}, errors.New("leadId is required")

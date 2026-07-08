@@ -123,6 +123,25 @@ func (h *DealHandler) Item(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"item": item})
+	case "profile":
+		if r.Method != http.MethodPatch {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			FirstName  string `json:"firstName"`
+			Patronymic string `json:"patronymic"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid json")
+			return
+		}
+		item, err := h.service.UpdateProfile(r.Context(), dealID, req.FirstName, req.Patronymic)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"item": item})
 	case "production-due-at":
 		if r.Method != http.MethodPatch {
 			w.WriteHeader(http.StatusMethodNotAllowed)

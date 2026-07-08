@@ -63,6 +63,18 @@ export async function updateDealComment(dealId: string, dealComments: string): P
   return response.item
 }
 
+export async function updateDealProfile(
+  dealId: string,
+  firstName: string,
+  patronymic: string,
+): Promise<Deal> {
+  const response = await dealsRequestJson<DealItemResponse>(`/api/v1/deals/${dealId}/profile`, {
+    method: 'PATCH',
+    body: JSON.stringify({ firstName, patronymic }),
+  })
+  return response.item
+}
+
 export async function updateDealStatus(
   dealId: string,
   columnId: DealKanbanColumnId,

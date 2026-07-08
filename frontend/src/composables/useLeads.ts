@@ -8,6 +8,7 @@ import {
   updateLeadPickupDelivery as patchLeadPickupDelivery,
   updateLeadProducts as patchLeadProducts,
   updateLeadProduction as patchLeadProduction,
+  updateLeadProfile as patchLeadProfile,
 } from '@/api/leads'
 import { deleteAttachment, uploadLeadAttachments } from '@/api/attachments'
 import { createLeadComment } from '@/api/activities'
@@ -152,6 +153,15 @@ export function useLeads() {
     applyLeadUpdate(lead, updatedLead)
   }
 
+  async function updateLeadProfile(leadId: string, firstName: string, patronymic: string) {
+    const lead = leads.value.find((item) => item.id === leadId)
+    if (!lead) return normalizeLead(await patchLeadProfile(leadId, firstName, patronymic))
+
+    const updatedLead = normalizeLead(await patchLeadProfile(leadId, firstName, patronymic))
+    applyLeadUpdate(lead, updatedLead)
+    return updatedLead
+  }
+
   async function addLeadAttachments(leadId: string, files: File[]): Promise<LeadAttachment[]> {
     const { items, activity } = await uploadLeadAttachments(leadId, files)
     leads.value = leads.value.map((item) =>
@@ -227,6 +237,7 @@ export function useLeads() {
     updateLeadPickupDelivery,
     updateLeadProducts,
     updateLeadProduction,
+    updateLeadProfile,
     deleteLead,
   }
 }

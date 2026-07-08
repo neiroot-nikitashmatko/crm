@@ -262,6 +262,45 @@ WHERE id = $1::uuid AND deleted_at IS NULL
 	return r.getDealWithProducts(ctx, dealID)
 }
 
+func (r *DealRepository) UpdateProfile(ctx context.Context, dealID string, firstName string, patronymic string) (model.Deal, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return model.Deal{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var leadID *string
+	err = tx.QueryRow(ctx, `
+UPDATE deals
+SET first_name = $2,
+    patronymic = $3,
+    updated_at = now()
+WHERE id = $1::uuid AND deleted_at IS NULL
+RETURNING lead_id::text
+`, dealID, firstName, patronymic).Scan(&leadID)
+	if err != nil {
+		return model.Deal{}, err
+	}
+
+	if leadID != nil && strings.TrimSpace(*leadID) != "" {
+		_, err = tx.Exec(ctx, `
+UPDATE leads
+SET first_name = $2,
+    patronymic = $3,
+    updated_at = now()
+WHERE id = $1::uuid AND deleted_at IS NULL
+`, *leadID, firstName, patronymic)
+		if err != nil {
+			return model.Deal{}, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.Deal{}, err
+	}
+	return r.getDealWithProducts(ctx, dealID)
+}
+
 func (r *DealRepository) UpdateProductionDueAt(ctx context.Context, dealID string, dueAtMillis *int64) (model.Deal, error) {
 	_, err := r.db.Exec(ctx, `
 UPDATE deals
