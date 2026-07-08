@@ -55,7 +55,8 @@ func (h *BeelineIntegrationHandler) XSIEvents(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	result, err := h.service.HandleXSIEvent(r.Context(), body, r.Header.Get("Content-Type"))
+	trafficSource := strings.TrimSpace(r.URL.Query().Get("trafficSource"))
+	result, err := h.service.HandleXSIEvent(r.Context(), body, r.Header.Get("Content-Type"), trafficSource)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

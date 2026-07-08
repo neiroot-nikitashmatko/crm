@@ -89,16 +89,38 @@ BEELINE_CREATED_BY_USER_ID=...           # UUID пользователя в на
 
 ```bash
 cd /opt/proclients
-chmod +x backend/scripts/beeline_subscribe.sh
+chmod +x backend/scripts/beeline_subscribe.sh backend/scripts/beeline_subscribe_all.sh
 
-# Пример: подписка на добавочный/номер “200”
+# Один номер
 BEELINE_API_TOKEN="$BEELINE_API_TOKEN" \
-BEELINE_PATTERN="200" \
-BEELINE_CALLBACK_URL="https://crm.neiroot.ru/api/v1/integrations/beeline/xsi-events?secret=$BEELINE_WEBHOOK_SECRET" \
+BEELINE_PATTERN="9613001616@rnd.so.ims.mnc099.mcc250.3gppnetwork.org" \
+BEELINE_CALLBACK_URL="https://crm.neiroot.ru/api/v1/integrations/beeline/xsi-events/$BEELINE_WEBHOOK_SECRET?trafficSource=Знал%20о%20производстве" \
 ./backend/scripts/beeline_subscribe.sh
+
+# Все многоканальные номера сразу (источник трафика в query trafficSource)
+BEELINE_API_TOKEN="$BEELINE_API_TOKEN" \
+BEELINE_WEBHOOK_SECRET="$BEELINE_WEBHOOK_SECRET" \
+./backend/scripts/beeline_subscribe_all.sh
 ```
 
-Важно: наш webhook проверяет секрет либо по заголовку `X-Beeline-Secret`, либо по query-параметру `?secret=...` (этот вариант обычно проще в Билайне).
+Маппинг номер → источник трафика:
+
+| Номер | Источник |
+|-------|----------|
+| (961) 300-16-16 | Знал о производстве |
+| (961) 301-50-50 | Знал о производстве |
+| (966) 206-69-59 | Визитка(авточехлы) |
+| (961) 319-52-19 | Авито (Автоатрибут) |
+| (906) 454-58-34 | Авито (AutoFactory) |
+| (906) 454-58-66 | Авито (Автоателье) |
+| (903) 430-67-67 | Яндекс карты |
+| (903) 436-33-36 | Instagram |
+| (961) 301-14-58 | Вконтакте |
+| (961) 301-14-60 | 2gis |
+
+Важно: наш webhook проверяет секрет либо по заголовку `X-Beeline-Secret`, либо по query-параметру `?secret=...`, либо в path `/xsi-events/<secret>`. Источник трафика передаётся в `?trafficSource=...` (скрипт `beeline_subscribe_all.sh` кодирует URL автоматически).
+
+Подписка живёт `expires` секунд (по умолчанию 3600). Запускайте `beeline_subscribe_all.sh` по cron каждые 30–40 минут.
 
 ## 6. Пересобрать backend
 
