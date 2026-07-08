@@ -16,6 +16,7 @@ func NewRouter(
 	userHandler *UserHandler,
 	attachmentHandler *AttachmentHandler,
 	beelineHandler *BeelineIntegrationHandler,
+	eventsHandler *EventsHandler,
 	jwtManager *auth.Manager,
 	corsOrigins []string,
 ) http.Handler {
@@ -49,6 +50,9 @@ func NewRouter(
 	mux.HandleFunc("/api/v1/integrations/beeline/xsi-events", beelineHandler.XSIEvents)
 	// Allow Beeline to append extra path segments (e.g. /null) and allow embedding secret in path.
 	mux.HandleFunc("/api/v1/integrations/beeline/xsi-events/", beelineHandler.XSIEvents)
+
+	// Authenticated SSE stream with internal events.
+	mux.HandleFunc("/api/v1/events/leads", eventsHandler.LeadCreatedStream)
 
 	return withCORS(withAuth(jwtManager, mux), corsOrigins)
 }

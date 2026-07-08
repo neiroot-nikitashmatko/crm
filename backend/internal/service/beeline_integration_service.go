@@ -14,6 +14,7 @@ import (
 type BeelineIntegrationService struct {
 	leads           *LeadService
 	leadRepo        *repository.LeadRepository
+	events          *EventBus
 	webhookSecret   string
 	createdByUserID string
 }
@@ -21,12 +22,14 @@ type BeelineIntegrationService struct {
 func NewBeelineIntegrationService(
 	leads *LeadService,
 	leadRepo *repository.LeadRepository,
+	events *EventBus,
 	webhookSecret string,
 	createdByUserID string,
 ) *BeelineIntegrationService {
 	return &BeelineIntegrationService{
 		leads:           leads,
 		leadRepo:        leadRepo,
+		events:          events,
 		webhookSecret:   strings.TrimSpace(webhookSecret),
 		createdByUserID: strings.TrimSpace(createdByUserID),
 	}
@@ -80,6 +83,10 @@ func (s *BeelineIntegrationService) HandleXSIEvent(ctx context.Context, rawBody 
 	})
 	if err != nil {
 		return BeelineWebhookResult{}, err
+	}
+
+	if s.events != nil {
+		s.events.PublishLeadCreated(LeadCreatedEvent{Lead: created})
 	}
 
 	return BeelineWebhookResult{OK: true, Action: "created", LeadID: created.ID, NormalizedTo: normalized}, nil

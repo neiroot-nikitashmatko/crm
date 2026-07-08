@@ -56,9 +56,11 @@ func main() {
 	taskService := service.NewTaskService(taskRepo, attachmentService, activityService)
 	catalogProductService := service.NewCatalogProductService(catalogProductRepo)
 
+	eventsBus := service.NewEventBus()
 	beelineIntegrationService := service.NewBeelineIntegrationService(
 		leadService,
 		leadRepo,
+		eventsBus,
 		cfg.BeelineWebhookSecret,
 		cfg.BeelineCreatedByUser,
 	)
@@ -71,6 +73,7 @@ func main() {
 	userHandler := handler.NewUserHandler(userService)
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 	beelineHandler := handler.NewBeelineIntegrationHandler(beelineIntegrationService)
+	eventsHandler := handler.NewEventsHandler(eventsBus)
 
 	router := handler.NewRouter(
 		authHandler,
@@ -81,6 +84,7 @@ func main() {
 		userHandler,
 		attachmentHandler,
 		beelineHandler,
+		eventsHandler,
 		jwtManager,
 		cfg.CORSOrigins,
 	)

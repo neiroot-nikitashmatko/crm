@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
 import { TrashOutline } from '@vicons/ionicons5'
 import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
 import { useAuth } from '@/composables/useAuth'
+import { getAuthToken } from '@/api/session'
 import { useDeals } from '@/composables/useDeals'
-import { useLeads, emptyPickupDelivery, emptyProduction } from '@/composables/useLeads'
+import { normalizeLead, useLeads, emptyPickupDelivery, emptyProduction } from '@/composables/useLeads'
 import { useLeadsKanbanLayout } from '@/composables/useLeadsKanbanLayout'
 import { useDealProductRows } from '@/composables/useDealProductRows'
 import { useLeadProductRows } from '@/composables/useLeadProductRows'
@@ -645,6 +646,89 @@ async function handleCreateDealClick() {
 
 onMounted(() => {
   void Promise.all([loadLeads(true), loadDeals(), loadTasks()]).then(() => openLeadFromRouteQuery())
+})
+
+type LeadCreatedSSE = { lead: any }
+
+let leadEventsAbortController: AbortController | null = null
+
+function applyLeadCreatedEvent(rawLead: any) {
+  const normalized = normalizeLead(rawLead)
+  if (leads.value.some((item) => item.id === normalized.id)) return
+  leads.value = [normalized, ...leads.value]
+}
+
+async function startLeadEventsStream() {
+  if (leadEventsAbortController) return
+  const token = getAuthToken()
+  if (!token) return
+
+  const controller = new AbortController()
+  leadEventsAbortController = controller
+
+  try {
+    const response = await fetch('/api/v1/events/leads', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+    if (!response.ok || !response.body) return
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let currentEvent = ''
+    let currentData = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      while (true) {
+        const idx = buffer.indexOf('\n')
+        if (idx === -1) break
+        const line = buffer.slice(0, idx).replace(/\r$/, '')
+        buffer = buffer.slice(idx + 1)
+
+        if (line === '') {
+          if (currentEvent === 'lead-created' && currentData.trim() !== '') {
+            try {
+              const parsed = JSON.parse(currentData) as LeadCreatedSSE
+              if (parsed?.lead) applyLeadCreatedEvent(parsed.lead)
+            } catch (error) {
+              console.warn('Invalid lead SSE payload', error)
+            }
+          }
+          currentEvent = ''
+          currentData = ''
+          continue
+        }
+
+        if (line.startsWith('event:')) {
+          currentEvent = line.slice('event:'.length).trim()
+          continue
+        }
+        if (line.startsWith('data:')) {
+          const chunk = line.slice('data:'.length).trim()
+          currentData = currentData ? `${currentData}\n${chunk}` : chunk
+        }
+      }
+    }
+  } catch {
+    // ignore network errors (user may navigate away)
+  }
+}
+
+onMounted(() => {
+  void startLeadEventsStream()
+})
+
+onBeforeUnmount(() => {
+  if (leadEventsAbortController) {
+    leadEventsAbortController.abort()
+    leadEventsAbortController = null
+  }
 })
 
 watch(
