@@ -73,6 +73,33 @@ psql -U proclients -d proclients -h localhost -f backend/migrations/019_backfill
 
 Если миграций нет — этот шаг пропусти.
 
+## 5.1 Интеграция Билайн (XSI-Events → автосоздание лидов)
+
+Если включаете интеграцию с Облачной АТС Билайн:
+
+1) В `backend/.env` на сервере добавьте:
+
+```env
+BEELINE_API_TOKEN=...                    # токен из личного кабинета Билайн (X-MPBX-API-AUTH-TOKEN)
+BEELINE_WEBHOOK_SECRET=...               # любой длинный секрет
+BEELINE_CREATED_BY_USER_ID=...           # UUID пользователя в нашей БД (например, админ или отдельный “Система”)
+```
+
+2) В личном кабинете Билайн создайте подписку на XSI-Events (пример):
+
+```bash
+cd /opt/proclients
+chmod +x backend/scripts/beeline_subscribe.sh
+
+# Пример: подписка на добавочный/номер “200”
+BEELINE_API_TOKEN="$BEELINE_API_TOKEN" \
+BEELINE_PATTERN="200" \
+BEELINE_CALLBACK_URL="https://crm.neiroot.ru/api/v1/integrations/beeline/xsi-events?secret=$BEELINE_WEBHOOK_SECRET" \
+./backend/scripts/beeline_subscribe.sh
+```
+
+Важно: наш webhook проверяет секрет либо по заголовку `X-Beeline-Secret`, либо по query-параметру `?secret=...` (этот вариант обычно проще в Билайне).
+
 ## 6. Пересобрать backend
 
 ```bash

@@ -93,6 +93,31 @@ RETURNING id::text
 	return r.GetByID(ctx, leadID)
 }
 
+func (r *LeadRepository) FindActiveLeadIDByPhone(ctx context.Context, phone string) (string, error) {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return "", nil
+	}
+
+	const query = `
+SELECT id::text
+FROM leads
+WHERE deleted_at IS NULL
+  AND phone = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+	var id string
+	err := r.db.QueryRow(ctx, query, phone).Scan(&id)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return id, nil
+}
+
 func (r *LeadRepository) UpdateColumn(ctx context.Context, leadID string, columnID string, failureReason *string) (model.Lead, error) {
 	_, err := r.db.Exec(ctx, `
 UPDATE leads

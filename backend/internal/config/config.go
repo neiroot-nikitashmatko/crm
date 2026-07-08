@@ -15,6 +15,10 @@ type Config struct {
 	CORSOrigins []string
 	JWTSecret   string
 	JWTTTL      time.Duration
+
+	BeelineAPIToken      string
+	BeelineWebhookSecret string
+	BeelineCreatedByUser string
 }
 
 func Load() (Config, error) {
@@ -26,6 +30,10 @@ func Load() (Config, error) {
 		CORSOrigins: splitCSV(envOrDefault("CORS_ORIGINS", "http://localhost:5173")),
 		JWTSecret:   strings.TrimSpace(os.Getenv("JWT_SECRET")),
 		JWTTTL:      parseJWTTTL(envOrDefault("JWT_TTL_HOURS", "24")),
+
+		BeelineAPIToken:      strings.TrimSpace(os.Getenv("BEELINE_API_TOKEN")),
+		BeelineWebhookSecret: strings.TrimSpace(os.Getenv("BEELINE_WEBHOOK_SECRET")),
+		BeelineCreatedByUser: strings.TrimSpace(os.Getenv("BEELINE_CREATED_BY_USER_ID")),
 	}
 
 	if cfg.DatabaseURL == "" {

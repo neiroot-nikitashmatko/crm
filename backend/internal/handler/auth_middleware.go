@@ -8,12 +8,13 @@ import (
 )
 
 func isPublicPath(path string) bool {
-	switch path {
-	case "/health", "/api/v1/auth/login":
+	if path == "/health" || path == "/api/v1/auth/login" {
 		return true
-	default:
-		return false
 	}
+	if strings.HasPrefix(path, "/api/v1/integrations/beeline/xsi-events") {
+		return true
+	}
+	return false
 }
 
 func withAuth(jwtManager *auth.Manager, next http.Handler) http.Handler {

@@ -15,6 +15,7 @@ func NewRouter(
 	catalogProductHandler *CatalogProductHandler,
 	userHandler *UserHandler,
 	attachmentHandler *AttachmentHandler,
+	beelineHandler *BeelineIntegrationHandler,
 	jwtManager *auth.Manager,
 	corsOrigins []string,
 ) http.Handler {
@@ -44,6 +45,10 @@ func NewRouter(
 	mux.HandleFunc("/api/v1/users/", userHandler.Item)
 
 	mux.HandleFunc("/api/v1/attachments/", attachmentHandler.Item)
+
+	mux.HandleFunc("/api/v1/integrations/beeline/xsi-events", beelineHandler.XSIEvents)
+	// Allow Beeline to append extra path segments (e.g. /null) and allow embedding secret in path.
+	mux.HandleFunc("/api/v1/integrations/beeline/xsi-events/", beelineHandler.XSIEvents)
 
 	return withCORS(withAuth(jwtManager, mux), corsOrigins)
 }
