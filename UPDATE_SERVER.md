@@ -120,7 +120,38 @@ BEELINE_WEBHOOK_SECRET="$BEELINE_WEBHOOK_SECRET" \
 
 Важно: наш webhook проверяет секрет либо по заголовку `X-Beeline-Secret`, либо по query-параметру `?secret=...`, либо в path `/xsi-events/<secret>`. Источник трафика передаётся в `?trafficSource=...` (скрипт `beeline_subscribe_all.sh` кодирует URL автоматически).
 
-Подписка живёт `expires` секунд (по умолчанию 3600). Запускайте `beeline_subscribe_all.sh` по cron каждые 30–40 минут.
+Подписка живёт `expires` секунд (по умолчанию 3600). Чтобы она не обрывалась, настройте автопродление (раз в 30 минут):
+
+```bash
+cd /opt/proclients
+chmod +x backend/scripts/beeline_renew_subscriptions.sh
+
+sudo cp deploy/systemd/proclients-beeline-renew.service /etc/systemd/system/
+sudo cp deploy/systemd/proclients-beeline-renew.timer /etc/systemd/system/
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now proclients-beeline-renew.timer
+```
+
+Проверка:
+
+```bash
+systemctl status proclients-beeline-renew.timer --no-pager
+systemctl list-timers --no-pager | grep beeline
+tail -n 50 /var/log/proclients-beeline-renew.log
+```
+
+Ручной запуск (если нужно прямо сейчас):
+
+```bash
+sudo systemctl start proclients-beeline-renew.service
+```
+
+Альтернатива без systemd — cron (каждые 30 минут):
+
+```cron
+*/30 * * * * /opt/proclients/backend/scripts/beeline_renew_subscriptions.sh
+```
 
 ## 6. Пересобрать backend
 

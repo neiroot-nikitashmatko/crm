@@ -1,0 +1,10 @@
+[Unit]
+Description=Renew Beeline XSI-Events subscriptions for PROclients
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/proclients
+EnvironmentFile=-/opt/proclients/backend/.env
+ExecStart=/opt/proclients/backend/scripts/beeline_renew_subscriptions.sh
