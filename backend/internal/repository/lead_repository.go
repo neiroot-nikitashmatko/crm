@@ -99,11 +99,15 @@ func (r *LeadRepository) FindActiveLeadIDByPhone(ctx context.Context, phone stri
 		return "", nil
 	}
 
+	// Only treat leads still in the working pipeline as duplicates.
+	// If the previous lead is already in "deal" or "failed", allow a new one
+	// (repeat customer calling again).
 	const query = `
 SELECT id::text
 FROM leads
 WHERE deleted_at IS NULL
   AND phone = $1
+  AND column_id IN ('new', 'chat', 'phone')
 ORDER BY created_at DESC
 LIMIT 1
 `

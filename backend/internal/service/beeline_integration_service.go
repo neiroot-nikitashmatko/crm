@@ -67,6 +67,13 @@ func (s *BeelineIntegrationService) HandleXSIEvent(
 		return BeelineWebhookResult{}, errors.New("BEELINE_CREATED_BY_USER_ID is required")
 	}
 
+	body := string(rawBody)
+	if !isInboundBeelineCall(body) {
+		result := BeelineWebhookResult{OK: true, Action: "ignored_direction"}
+		s.logWebhook(result, "", contentType, trafficSourceHint, rawBody)
+		return result, nil
+	}
+
 	phone := extractCallerPhoneFromEvent(rawBody, contentType)
 	if phone == "" {
 		result := BeelineWebhookResult{OK: true, Action: "ignored"}
@@ -77,6 +84,12 @@ func (s *BeelineIntegrationService) HandleXSIEvent(
 	normalized := normalizeRUPhone(phone)
 	if normalized == "" {
 		result := BeelineWebhookResult{OK: true, Action: "ignored"}
+		s.logWebhook(result, phone, contentType, trafficSourceHint, rawBody)
+		return result, nil
+	}
+
+	if isOwnBeelineNumber(normalized) {
+		result := BeelineWebhookResult{OK: true, Action: "ignored_own_number", NormalizedTo: normalized}
 		s.logWebhook(result, phone, contentType, trafficSourceHint, rawBody)
 		return result, nil
 	}
@@ -195,7 +208,30 @@ func phoneDigitsKey(value string) string {
 	return raw
 }
 
-var ruPhoneRegex = regexp.MustCompile(`(?m)(\+?\d[\d\-\s\(\)]{9,}\d)`)
+func isInboundBeelineCall(body string) bool {
+	lower := strings.ToLower(body)
+	// BroadWorks: Terminator = incoming to our side; Originator = outbound.
+	if strings.Contains(lower, "personality>originator") {
+		return false
+	}
+	if strings.Contains(lower, "personality>terminator") {
+		return true
+	}
+	// If personality is absent, allow and rely on phone validation.
+	return true
+}
+
+func isOwnBeelineNumber(normalized string) bool {
+	key := phoneDigitsKey(normalized)
+	_, ok := constants.BeelineTrafficSourceByPhone[key]
+	return ok
+}
+
+var (
+	remotePartyBlockRegex = regexp.MustCompile(`(?is)<(?:xsi:)?remoteParty>(.*?)</(?:xsi:)?remoteParty>`)
+	telURIRegex           = regexp.MustCompile(`(?i)tel:(\+?\d[\d\-\s\(\)]*)`)
+	addressDigitsRegex    = regexp.MustCompile(`(?i)<(?:xsi:)?address[^>]*>\s*(?:tel:)?(\+?\d[\d\-\s\(\)]+)\s*<`)
+)
 
 func extractCallerPhoneFromEvent(rawBody []byte, contentType string) string {
 	trimmed := strings.TrimSpace(string(rawBody))
@@ -212,10 +248,16 @@ func extractCallerPhoneFromEvent(rawBody []byte, contentType string) string {
 		}
 	}
 
-	match := ruPhoneRegex.FindStringSubmatch(trimmed)
-	if len(match) > 1 {
-		return match[1]
+	// Prefer remoteParty (actual caller), never scan whole XML — UUIDs look like phones.
+	if block := remotePartyBlockRegex.FindStringSubmatch(trimmed); len(block) > 1 {
+		if tel := telURIRegex.FindStringSubmatch(block[1]); len(tel) > 1 {
+			return tel[1]
+		}
+		if addr := addressDigitsRegex.FindStringSubmatch(block[1]); len(addr) > 1 {
+			return addr[1]
+		}
 	}
+
 	return ""
 }
 
@@ -234,26 +276,21 @@ func extractCalledPhoneFromEvent(rawBody []byte, contentType string) string {
 		}
 	}
 
-	for _, key := range []string{"CalledNumber", "calledNumber", "DNIS", "destination"} {
-		open := strings.Index(strings.ToLower(trimmed), strings.ToLower(key))
-		if open == -1 {
-			continue
-		}
-		fragment := trimmed[open:]
-		if match := ruPhoneRegex.FindStringSubmatch(fragment); len(match) > 1 {
-			return match[1]
-		}
+	// Our multi-channel number usually sits in addressOfRecord.
+	aor := regexp.MustCompile(`(?i)<(?:xsi:)?addressOfRecord>(\d{10})@`)
+	if match := aor.FindStringSubmatch(trimmed); len(match) > 1 {
+		return match[1]
 	}
 
 	return ""
 }
 
 var callerPhoneJSONKeys = []string{
-	"phone", "caller", "callingnumber", "from", "ani", "callingparty", "remote",
+	"phone", "caller", "callingnumber", "ani", "callingparty",
 }
 
 var calledPhoneJSONKeys = []string{
-	"callednumber", "called", "to", "dnis", "destination", "terminating", "dialed",
+	"callednumber", "called", "dnis", "destination", "terminating", "dialed",
 }
 
 func findPhoneInJSON(value any, keys []string) string {
@@ -263,8 +300,15 @@ func findPhoneInJSON(value any, keys []string) string {
 			lower := strings.ToLower(key)
 			for _, candidateKey := range keys {
 				if lower == candidateKey {
-					if s, ok := nested.(string); ok && strings.TrimSpace(s) != "" {
-						return s
+					switch n := nested.(type) {
+					case string:
+						if strings.TrimSpace(n) != "" {
+							return n
+						}
+					default:
+						if candidate := findPhoneInJSON(nested, keys); candidate != "" {
+							return candidate
+						}
 					}
 				}
 			}
@@ -278,8 +322,6 @@ func findPhoneInJSON(value any, keys []string) string {
 				return candidate
 			}
 		}
-	case string:
-		return typed
 	default:
 		return ""
 	}
@@ -309,4 +351,3 @@ func normalizeRUPhone(value string) string {
 		return ""
 	}
 }
-
