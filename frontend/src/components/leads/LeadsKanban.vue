@@ -1135,57 +1135,68 @@ async function removeLeadAttachmentFile(attachmentId: string) {
               <h3 class="lead-details-sheet__panel-title">Информация о лиде</h3>
 
               <dl class="lead-details-sheet__info-list">
-                <div class="lead-details-sheet__info-column">
-                  <label class="lead-details-sheet__field">
-                    <span class="lead-details-sheet__label">Имя</span>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Имя</dt>
+                  <dd>
                     <input
                       v-model="currentLeadFirstName"
                       type="text"
-                      class="lead-details-sheet__input"
+                      class="lead-details-sheet__input lead-details-sheet__input--inline"
                       placeholder="Укажите имя"
                       @blur="persistLeadProfile"
                     />
-                  </label>
-                  <label class="lead-details-sheet__field">
-                    <span class="lead-details-sheet__label">Отчество</span>
+                  </dd>
+                </div>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Отчество</dt>
+                  <dd>
                     <input
                       v-model="currentLeadPatronymic"
                       type="text"
-                      class="lead-details-sheet__input"
+                      class="lead-details-sheet__input lead-details-sheet__input--inline"
                       placeholder="Укажите отчество"
                       @blur="persistLeadProfile"
                     />
-                  </label>
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Телефон</dt>
-                    <dd>{{ selectedLead.phone || '—' }}</dd>
-                  </div>
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Источник</dt>
-                    <dd>{{ selectedLead.trafficSource || '—' }}</dd>
-                  </div>
+                  </dd>
                 </div>
-
-                <div class="lead-details-sheet__info-column">
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Лид</dt>
-                    <dd>#{{ selectedLead.leadNumber }}</dd>
-                  </div>
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Статус</dt>
-                    <dd>{{ getColumnTitleById(selectedLead.columnId) }}</dd>
-                  </div>
-                  <div class="lead-details-sheet__info-row">
-                    <dt>Дата создания</dt>
-                    <dd>{{ formatLeadCreatedAt(selectedLead.createdAt) }}</dd>
-                  </div>
-                  <div
-                    v-if="selectedLead.columnId === 'failed' && selectedLead.failureReason"
-                    class="lead-details-sheet__info-row"
-                  >
-                    <dt>Причина провала</dt>
-                    <dd>{{ selectedLead.failureReason }}</dd>
-                  </div>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Телефон</dt>
+                  <dd>
+                    <span class="lead-details-sheet__value">{{ selectedLead.phone || '—' }}</span>
+                  </dd>
+                </div>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Лид</dt>
+                  <dd>
+                    <span class="lead-details-sheet__value">#{{ selectedLead.leadNumber }}</span>
+                  </dd>
+                </div>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Источник</dt>
+                  <dd>
+                    <span class="lead-details-sheet__value">{{ selectedLead.trafficSource || '—' }}</span>
+                  </dd>
+                </div>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Статус</dt>
+                  <dd>
+                    <span class="lead-details-sheet__value">{{ getColumnTitleById(selectedLead.columnId) }}</span>
+                  </dd>
+                </div>
+                <div class="lead-details-sheet__info-row">
+                  <dt>Дата создания</dt>
+                  <dd>
+                    <span class="lead-details-sheet__value">{{ formatLeadCreatedAt(selectedLead.createdAt) }}</span>
+                  </dd>
+                </div>
+                <div
+                  v-if="selectedLead.columnId === 'failed' && selectedLead.failureReason"
+                  class="lead-details-sheet__info-row"
+                >
+                  <dt>Причина провала</dt>
+                  <dd>
+                    <span class="lead-details-sheet__value">{{ selectedLead.failureReason }}</span>
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -1888,13 +1899,9 @@ async function removeLeadAttachmentFile(attachmentId: string) {
   margin: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.lead-details-sheet__info-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  column-gap: 16px;
+  row-gap: 12px;
+  align-items: start;
 }
 
 .lead-details-sheet__info-row {
@@ -1902,6 +1909,7 @@ async function removeLeadAttachmentFile(attachmentId: string) {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .lead-details-sheet__info-row dt {
@@ -1911,9 +1919,29 @@ async function removeLeadAttachmentFile(attachmentId: string) {
 
 .lead-details-sheet__info-row dd {
   margin: 0;
+  min-width: 0;
+}
+
+.lead-details-sheet__value,
+.lead-details-sheet__input--inline {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 8px;
   font-size: 14px;
-  color: #0f172a;
   font-weight: 500;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.lead-details-sheet__value {
+  border: 1px solid transparent;
+  background: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lead-details-sheet__field {
@@ -1937,6 +1965,13 @@ async function removeLeadAttachmentFile(attachmentId: string) {
   color: #0f172a;
   padding: 8px 10px;
   font-size: 14px;
+  font-family: inherit;
+}
+
+.lead-details-sheet__input--inline {
+  margin: 0;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
   font-family: inherit;
 }
 

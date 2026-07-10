@@ -19,6 +19,7 @@ type Config struct {
 	BeelineAPIToken      string
 	BeelineWebhookSecret string
 	BeelineCreatedByUser string
+	BeelineWebhookDebug  bool
 }
 
 func Load() (Config, error) {
@@ -34,6 +35,7 @@ func Load() (Config, error) {
 		BeelineAPIToken:      strings.TrimSpace(os.Getenv("BEELINE_API_TOKEN")),
 		BeelineWebhookSecret: strings.TrimSpace(os.Getenv("BEELINE_WEBHOOK_SECRET")),
 		BeelineCreatedByUser: strings.TrimSpace(os.Getenv("BEELINE_CREATED_BY_USER_ID")),
+		BeelineWebhookDebug:  parseBoolEnv(os.Getenv("BEELINE_WEBHOOK_DEBUG")),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -52,6 +54,15 @@ func parseJWTTTL(raw string) time.Duration {
 		return 24 * time.Hour
 	}
 	return time.Duration(hours) * time.Hour
+}
+
+func parseBoolEnv(raw string) bool {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func loadDotEnvIfExists() {

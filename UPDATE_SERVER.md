@@ -83,7 +83,20 @@ psql -U proclients -d proclients -h localhost -f backend/migrations/019_backfill
 BEELINE_API_TOKEN=...                    # токен из личного кабинета Билайн (X-MPBX-API-AUTH-TOKEN)
 BEELINE_WEBHOOK_SECRET=...               # любой длинный секрет
 BEELINE_CREATED_BY_USER_ID=...           # UUID пользователя в нашей БД (например, админ или отдельный “Система”)
+BEELINE_WEBHOOK_DEBUG=true               # временно: писать raw body webhook в journalctl
 ```
+
+Краткие строки `[beeline-webhook]` пишутся всегда. Полный raw body — только при `BEELINE_WEBHOOK_DEBUG=true`.
+
+Просмотр логов:
+
+```bash
+journalctl -u proclients-api --since "2 hours ago" --no-pager | grep beeline-webhook
+# или по странному номеру:
+journalctl -u proclients-api --since "2 hours ago" --no-pager | grep -F "4721076150"
+```
+
+После разбора отключите debug: `BEELINE_WEBHOOK_DEBUG=false` и перезапустите API.
 
 2) В личном кабинете Билайн создайте подписку на XSI-Events (пример):
 

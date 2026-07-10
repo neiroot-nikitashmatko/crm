@@ -63,6 +63,7 @@ func main() {
 		eventsBus,
 		cfg.BeelineWebhookSecret,
 		cfg.BeelineCreatedByUser,
+		cfg.BeelineWebhookDebug,
 	)
 
 	authHandler := handler.NewAuthHandler(authService, jwtManager)

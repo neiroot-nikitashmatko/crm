@@ -809,37 +809,68 @@ async function removeAttachment(attachmentId: string) {
             <div v-if="activeSection === 'general'" class="deal-details-sheet__panel">
               <h3 class="deal-details-sheet__panel-title">Общая информация</h3>
               <dl class="deal-details-sheet__info-list">
-                <label class="deal-details-sheet__field">
-                  <span class="deal-details-sheet__label">Имя</span>
-                  <input
-                    v-model="firstNameDraft"
-                    type="text"
-                    class="deal-details-sheet__input"
-                    placeholder="Укажите имя"
-                    @blur="persistDealProfile"
-                  />
-                </label>
-                <label class="deal-details-sheet__field">
-                  <span class="deal-details-sheet__label">Отчество</span>
-                  <input
-                    v-model="patronymicDraft"
-                    type="text"
-                    class="deal-details-sheet__input"
-                    placeholder="Укажите отчество"
-                    @blur="persistDealProfile"
-                  />
-                </label>
-                <div class="deal-details-sheet__info-row"><dt>Телефон</dt><dd>{{ selectedDeal.phone }}</dd></div>
-                <div class="deal-details-sheet__info-row"><dt>Источник</dt><dd>{{ selectedDeal.trafficSource || '—' }}</dd></div>
-                <div class="deal-details-sheet__info-row"><dt>Сумма</dt><dd>{{ selectedDeal.totalAmount }} ₽</dd></div>
-                <div class="deal-details-sheet__info-row"><dt>Создатель</dt><dd>{{ selectedDeal.createdBy }}</dd></div>
-                <div class="deal-details-sheet__info-row"><dt>Создана</dt><dd>{{ formatDateTime(selectedDeal.createdAt) }}</dd></div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Имя</dt>
+                  <dd>
+                    <input
+                      v-model="firstNameDraft"
+                      type="text"
+                      class="deal-details-sheet__input deal-details-sheet__input--inline"
+                      placeholder="Укажите имя"
+                      @blur="persistDealProfile"
+                    />
+                  </dd>
+                </div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Отчество</dt>
+                  <dd>
+                    <input
+                      v-model="patronymicDraft"
+                      type="text"
+                      class="deal-details-sheet__input deal-details-sheet__input--inline"
+                      placeholder="Укажите отчество"
+                      @blur="persistDealProfile"
+                    />
+                  </dd>
+                </div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Телефон</dt>
+                  <dd>
+                    <span class="deal-details-sheet__value">{{ selectedDeal.phone || '—' }}</span>
+                  </dd>
+                </div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Источник</dt>
+                  <dd>
+                    <span class="deal-details-sheet__value">{{ selectedDeal.trafficSource || '—' }}</span>
+                  </dd>
+                </div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Сумма</dt>
+                  <dd>
+                    <span class="deal-details-sheet__value">{{ selectedDeal.totalAmount }} ₽</span>
+                  </dd>
+                </div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Создатель</dt>
+                  <dd>
+                    <span class="deal-details-sheet__value">{{ selectedDeal.createdBy }}</span>
+                  </dd>
+                </div>
+                <div class="deal-details-sheet__info-row">
+                  <dt>Создана</dt>
+                  <dd>
+                    <span class="deal-details-sheet__value">{{ formatDateTime(selectedDeal.createdAt) }}</span>
+                  </dd>
+                </div>
                 <div
                   v-if="resolvedKanbanColumnId === 'failed' && selectedDeal.failureReason"
                   class="deal-details-sheet__info-row"
                 >
                   <dt>Причина провала</dt>
-                  <dd>{{ selectedDeal.failureReason }}</dd>
+                  <dd>
+                    <span class="deal-details-sheet__value">{{ selectedDeal.failureReason }}</span>
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -1514,9 +1545,29 @@ async function removeAttachment(attachmentId: string) {
 
 .deal-details-sheet__info-row dd {
   margin: 0;
+  min-width: 0;
+}
+
+.deal-details-sheet__value,
+.deal-details-sheet__input--inline {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 8px;
   font-size: 14px;
-  color: #0f172a;
   font-weight: 500;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.deal-details-sheet__value {
+  border: 1px solid transparent;
+  background: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .deal-details-sheet__field {
@@ -1540,6 +1591,13 @@ async function removeAttachment(attachmentId: string) {
   color: #0f172a;
   font: inherit;
   padding: 9px 12px;
+}
+
+.deal-details-sheet__input--inline {
+  margin: 0;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-family: inherit;
 }
 
 .deal-details-sheet__textarea {

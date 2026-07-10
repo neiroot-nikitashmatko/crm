@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"proclients/backend/internal/constants"
 	"proclients/backend/internal/model"
@@ -18,6 +20,7 @@ type BeelineIntegrationService struct {
 	events          *EventBus
 	webhookSecret   string
 	createdByUserID string
+	debugLogging    bool
 }
 
 func NewBeelineIntegrationService(
@@ -26,6 +29,7 @@ func NewBeelineIntegrationService(
 	events *EventBus,
 	webhookSecret string,
 	createdByUserID string,
+	debugLogging bool,
 ) *BeelineIntegrationService {
 	return &BeelineIntegrationService{
 		leads:           leads,
@@ -33,6 +37,7 @@ func NewBeelineIntegrationService(
 		events:          events,
 		webhookSecret:   strings.TrimSpace(webhookSecret),
 		createdByUserID: strings.TrimSpace(createdByUserID),
+		debugLogging:    debugLogging,
 	}
 }
 
@@ -64,12 +69,16 @@ func (s *BeelineIntegrationService) HandleXSIEvent(
 
 	phone := extractCallerPhoneFromEvent(rawBody, contentType)
 	if phone == "" {
-		return BeelineWebhookResult{OK: true, Action: "ignored"}, nil
+		result := BeelineWebhookResult{OK: true, Action: "ignored"}
+		s.logWebhook(result, phone, contentType, trafficSourceHint, rawBody)
+		return result, nil
 	}
 
 	normalized := normalizeRUPhone(phone)
 	if normalized == "" {
-		return BeelineWebhookResult{OK: true, Action: "ignored"}, nil
+		result := BeelineWebhookResult{OK: true, Action: "ignored"}
+		s.logWebhook(result, phone, contentType, trafficSourceHint, rawBody)
+		return result, nil
 	}
 
 	trafficSource := resolveBeelineTrafficSource(trafficSourceHint, rawBody, contentType)
@@ -79,13 +88,15 @@ func (s *BeelineIntegrationService) HandleXSIEvent(
 		return BeelineWebhookResult{}, err
 	}
 	if existingID != "" {
-		return BeelineWebhookResult{
+		result := BeelineWebhookResult{
 			OK:            true,
 			Action:        "exists",
 			LeadID:        existingID,
 			NormalizedTo:  normalized,
 			TrafficSource: trafficSource,
-		}, nil
+		}
+		s.logWebhook(result, phone, contentType, trafficSourceHint, rawBody)
+		return result, nil
 	}
 
 	created, err := s.leads.Create(ctx, model.CreateLeadInput{
@@ -104,13 +115,50 @@ func (s *BeelineIntegrationService) HandleXSIEvent(
 		s.events.PublishLeadCreated(LeadCreatedEvent{Lead: created})
 	}
 
-	return BeelineWebhookResult{
+	result := BeelineWebhookResult{
 		OK:            true,
 		Action:        "created",
 		LeadID:        created.ID,
 		NormalizedTo:  normalized,
 		TrafficSource: trafficSource,
-	}, nil
+	}
+	s.logWebhook(result, phone, contentType, trafficSourceHint, rawBody)
+	return result, nil
+}
+
+func (s *BeelineIntegrationService) logWebhook(
+	result BeelineWebhookResult,
+	extractedPhone string,
+	contentType string,
+	trafficSourceHint string,
+	rawBody []byte,
+) {
+	log.Printf(
+		"[beeline-webhook] action=%s extracted=%q normalized=%q source=%q sourceHint=%q leadId=%s contentType=%q bodyBytes=%d",
+		result.Action,
+		extractedPhone,
+		result.NormalizedTo,
+		result.TrafficSource,
+		trafficSourceHint,
+		result.LeadID,
+		contentType,
+		len(rawBody),
+	)
+	if !s.debugLogging {
+		return
+	}
+	log.Printf("[beeline-webhook] raw-body: %s", truncateForLog(string(rawBody), 8000))
+}
+
+func truncateForLog(value string, maxBytes int) string {
+	if maxBytes <= 0 || len(value) <= maxBytes {
+		return value
+	}
+	cut := maxBytes
+	for cut > 0 && !utf8.ValidString(value[:cut]) {
+		cut--
+	}
+	return value[:cut] + "...(truncated)"
 }
 
 func resolveBeelineTrafficSource(hint string, rawBody []byte, contentType string) string {
