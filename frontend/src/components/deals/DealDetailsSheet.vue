@@ -84,6 +84,7 @@ const statusValidationTargetSection = ref<'production' | 'pickup' | 'delivery' |
 const isFailureReasonModalOpen = ref(false)
 const failureReasonDraft = ref('')
 const persistedPickupDeliveryJSON = ref('')
+const productionDueAtBeforeModal = ref<number | null>(null)
 let pickupDeliverySaveTimer: ReturnType<typeof setTimeout> | null = null
 let dealProductsSaveTimer: ReturnType<typeof setTimeout> | null = null
 let productionSaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -630,6 +631,8 @@ async function persistDealProducts() {
 
 function openProductionDateModal() {
   if (!selectedDeal.value) return
+  // Remember value at open: panel picker updates v-model before Confirm is clicked.
+  productionDueAtBeforeModal.value = selectedDeal.value.production.dueAt
   currentProductionDueAt.value = currentProductionDueAt.value ?? Date.now()
   isProductionDateModalOpen.value = true
 }
@@ -638,19 +641,19 @@ async function handleProductionDateConfirm(onConfirm: () => void) {
   if (!selectedDeal.value) return
 
   const dealId = selectedDeal.value.id
-  const previousDueAt = selectedDeal.value.production.dueAt
 
   onConfirm()
   isProductionDateModalOpen.value = false
 
   const nextDueAt = currentProductionDueAt.value
-  if (previousDueAt === nextDueAt) return
+  if (productionDueAtBeforeModal.value === nextDueAt) return
 
   try {
     await updateDealProduction(dealId, { ...selectedDeal.value.production, dueAt: nextDueAt })
+    productionDueAtBeforeModal.value = nextDueAt
   } catch (error) {
     console.error('Не удалось сохранить дату производства', error)
-    currentProductionDueAt.value = previousDueAt
+    currentProductionDueAt.value = productionDueAtBeforeModal.value
   }
 }
 
