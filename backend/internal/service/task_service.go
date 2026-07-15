@@ -47,9 +47,6 @@ func (s *TaskService) Create(ctx context.Context, input model.CreateTaskInput) (
 	if input.Status == "" {
 		input.Status = "active"
 	}
-	if input.LeadID == nil && input.DealID == nil {
-		return model.Task{}, errors.New("leadId or dealId is required")
-	}
 	task, err := s.repo.Create(ctx, input)
 	if err != nil {
 		return model.Task{}, err
