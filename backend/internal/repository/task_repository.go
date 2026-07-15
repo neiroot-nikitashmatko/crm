@@ -17,8 +17,7 @@ func NewTaskRepository(db *pgxpool.Pool) *TaskRepository {
 	return &TaskRepository{db: db}
 }
 
-func (r *TaskRepository) List(ctx context.Context) ([]model.Task, error) {
-	rows, err := r.db.Query(ctx, `
+const taskSelectSQL = `
 SELECT
   t.id::text,
   t.title,
@@ -27,6 +26,10 @@ SELECT
   t.status::text,
   t.lead_id::text,
   t.deal_id::text,
+  COALESCE(NULLIF(l.first_name, ''), NULLIF(d.first_name, ''), '') AS client_first_name,
+  COALESCE(NULLIF(l.patronymic, ''), NULLIF(d.patronymic, ''), '') AS client_patronymic,
+  COALESCE(NULLIF(l.phone, ''), NULLIF(d.phone, ''), '') AS client_phone,
+  COALESCE(NULLIF(l.traffic_source, ''), NULLIF(d.traffic_source, ''), '') AS traffic_source,
   CASE
     WHEN COALESCE(u.first_name, '') = '' AND COALESCE(u.last_name, '') = '' THEN t.created_by::text
     ELSE trim(concat_ws(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, '')))
@@ -35,6 +38,12 @@ SELECT
   t.updated_at
 FROM tasks t
 LEFT JOIN users u ON u.id = t.created_by
+LEFT JOIN leads l ON l.id = t.lead_id AND l.deleted_at IS NULL
+LEFT JOIN deals d ON d.id = t.deal_id AND d.deleted_at IS NULL
+`
+
+func (r *TaskRepository) List(ctx context.Context) ([]model.Task, error) {
+	rows, err := r.db.Query(ctx, taskSelectSQL+`
 ORDER BY t.created_at DESC
 `)
 	if err != nil {
@@ -104,23 +113,7 @@ WHERE lead_id = $1::uuid AND status = 'active'
 }
 
 func (r *TaskRepository) getByID(ctx context.Context, taskID string) (model.Task, error) {
-	row := r.db.QueryRow(ctx, `
-SELECT
-  t.id::text,
-  t.title,
-  t.text,
-  t.due_at,
-  t.status::text,
-  t.lead_id::text,
-  t.deal_id::text,
-  CASE
-    WHEN COALESCE(u.first_name, '') = '' AND COALESCE(u.last_name, '') = '' THEN t.created_by::text
-    ELSE trim(concat_ws(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, '')))
-  END AS created_by_name,
-  t.created_at,
-  t.updated_at
-FROM tasks t
-LEFT JOIN users u ON u.id = t.created_by
+	row := r.db.QueryRow(ctx, taskSelectSQL+`
 WHERE t.id = $1::uuid
 `, taskID)
 	return scanTask(row)
@@ -145,6 +138,10 @@ func scanTask(scanner taskScanner) (model.Task, error) {
 		&task.Status,
 		&leadID,
 		&dealID,
+		&task.ClientFirstName,
+		&task.ClientPatronymic,
+		&task.ClientPhone,
+		&task.TrafficSource,
 		&task.CreatedBy,
 		&createdAt,
 		&updatedAt,

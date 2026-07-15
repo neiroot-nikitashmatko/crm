@@ -78,12 +78,15 @@ func (s *TaskService) Update(ctx context.Context, taskID string, input model.Upd
 	return s.enrichTask(ctx, task)
 }
 
-func (s *TaskService) Complete(ctx context.Context, taskID string) (model.Task, error) {
+func (s *TaskService) Complete(ctx context.Context, taskID string, completedBy string) (model.Task, error) {
+	if strings.TrimSpace(completedBy) == "" {
+		return model.Task{}, errors.New("completedBy is required")
+	}
 	task, err := s.repo.Complete(ctx, taskID)
 	if err != nil {
 		return model.Task{}, err
 	}
-	if _, err := s.activities.LogTaskCompleted(ctx, task.ID, task.CreatedBy); err != nil {
+	if _, err := s.activities.LogTaskCompleted(ctx, task.ID, completedBy); err != nil {
 		return model.Task{}, err
 	}
 	return s.enrichTask(ctx, task)

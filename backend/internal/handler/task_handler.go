@@ -98,7 +98,12 @@ func (h *TaskHandler) Item(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		item, err := h.service.Complete(r.Context(), taskID)
+		completedBy := auth.UserIDFromContext(r.Context())
+		if completedBy == "" {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		item, err := h.service.Complete(r.Context(), taskID, completedBy)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return

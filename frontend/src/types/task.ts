@@ -28,6 +28,10 @@ export interface Task {
   dueAt: number | null
   leadId?: string
   dealId?: string
+  clientFirstName: string
+  clientPatronymic: string
+  clientPhone: string
+  trafficSource: string
   createdBy: string
   createdAt: Date
   status: TaskStatus

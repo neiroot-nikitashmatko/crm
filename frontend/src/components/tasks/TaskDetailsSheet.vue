@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NDatePicker, NInput } from 'naive-ui'
+import { AttachOutline, PaperPlaneOutline } from '@vicons/ionicons5'
+import { NButton, NDatePicker, NIcon, NInput } from 'naive-ui'
 import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
 import { useDeals } from '@/composables/useDeals'
+import { useLeads } from '@/composables/useLeads'
 import { useTasks } from '@/composables/useTasks'
 import type { StoredAttachment } from '@/types/attachment'
 import type { Task, TaskActivityEntry } from '@/types/task'
 import AppModal from '@/components/common/AppModal.vue'
+import {
+  clearTaskCommentDraft,
+  loadTaskCommentDraft,
+  saveTaskCommentDraft,
+} from '@/utils/taskCommentDraft'
 
 const props = defineProps<{
   taskId: string | null
@@ -20,6 +27,7 @@ const emit = defineEmits<{
 
 const { tasks, completeTask, updateTask, addTaskAttachments, removeTaskAttachment, addTaskComment } = useTasks()
 const { deals, getLeadDeal, loadDeals } = useDeals()
+const { leads, loadLeads } = useLeads()
 const router = useRouter()
 const isDateModalOpen = ref(false)
 const commentDraft = ref('')
@@ -64,6 +72,44 @@ const formattedDueAt = computed(() =>
   selectedTask.value?.dueAt ? new Date(selectedTask.value.dueAt).toLocaleString('ru-RU') : 'Без срока',
 )
 
+const linkedLead = computed(() => {
+  const leadId = selectedTask.value?.leadId
+  if (!leadId) return null
+  return leads.value.find((lead) => lead.id === leadId) ?? null
+})
+
+const linkedDeal = computed(() => {
+  const task = selectedTask.value
+  if (!task) return null
+
+  if (task.dealId) {
+    const byId = deals.value.find((deal) => deal.id === task.dealId)
+    if (byId) return byId
+  }
+
+  if (task.leadId) {
+    return getLeadDeal(task.leadId) ?? null
+  }
+
+  return null
+})
+
+const clientSource = computed(() => linkedLead.value ?? linkedDeal.value)
+
+const displayClientFirstName = computed(
+  () => clientSource.value?.firstName?.trim() || selectedTask.value?.clientFirstName?.trim() || '—',
+)
+const displayClientPatronymic = computed(
+  () => clientSource.value?.patronymic?.trim() || selectedTask.value?.clientPatronymic?.trim() || '—',
+)
+const displayClientPhone = computed(
+  () => clientSource.value?.phone?.trim() || selectedTask.value?.clientPhone?.trim() || '—',
+)
+const displayTrafficSource = computed(
+  () => clientSource.value?.trafficSource?.trim() || selectedTask.value?.trafficSource?.trim() || '—',
+)
+const displayResponsible = computed(() => selectedTask.value?.createdBy?.trim() || '—')
+
 const linkedDealId = computed(() => {
   const task = selectedTask.value
   if (!task) return null
@@ -92,7 +138,7 @@ const navigationButtonLabel = computed(() =>
 )
 
 onMounted(() => {
-  void loadDeals()
+  void Promise.all([loadDeals(), loadLeads()])
 })
 
 function syncDrafts() {
@@ -104,12 +150,18 @@ function syncDrafts() {
 
 watch(
   () => selectedTask.value?.id,
-  () => {
+  (taskId) => {
     syncDrafts()
-    commentDraft.value = ''
+    commentDraft.value = taskId ? loadTaskCommentDraft(taskId) : ''
   },
   { immediate: true },
 )
+
+watch(commentDraft, (text) => {
+  const taskId = selectedTask.value?.id
+  if (!taskId) return
+  saveTaskCommentDraft(taskId, text)
+})
 
 function formatDateTime(value: Date | number | null) {
   if (value === null) return '—'
@@ -210,15 +262,17 @@ async function handleRemoveAttachment(attachmentId: string) {
   }
 }
 
-async function persistTaskComment() {
+async function sendTaskComment() {
   if (!selectedTask.value) return
 
+  const taskId = selectedTask.value.id
   const text = commentDraft.value.trim()
   if (!text) return
 
   try {
-    await addTaskComment(selectedTask.value.id, text)
+    await addTaskComment(taskId, text)
     commentDraft.value = ''
+    clearTaskCommentDraft(taskId)
   } catch (error) {
     console.error('Не удалось добавить комментарий', error)
   }
@@ -271,19 +325,41 @@ async function handleNavigationClick() {
 
         <div class="task-details-sheet__body">
           <div class="task-details-sheet__main">
-            <div class="task-details-sheet__field">
-              <p class="task-details-sheet__label">Ответственный</p>
-              <p class="task-details-sheet__value">{{ selectedTask.createdBy }}</p>
-            </div>
-
-            <div class="task-details-sheet__field">
-              <div class="task-details-sheet__row">
-                <p class="task-details-sheet__label">Крайний срок</p>
-                <button type="button" class="task-details-sheet__link" @click="openDateModal">
-                  Изменить
-                </button>
+            <div class="task-details-sheet__info-grid">
+              <div class="task-details-sheet__info-column">
+                <div class="task-details-sheet__info-item">
+                  <p class="task-details-sheet__label">Имя</p>
+                  <p class="task-details-sheet__value">{{ displayClientFirstName }}</p>
+                </div>
+                <div class="task-details-sheet__info-item">
+                  <p class="task-details-sheet__label">Отчество</p>
+                  <p class="task-details-sheet__value">{{ displayClientPatronymic }}</p>
+                </div>
+                <div class="task-details-sheet__info-item">
+                  <p class="task-details-sheet__label">Телефон</p>
+                  <p class="task-details-sheet__value">{{ displayClientPhone }}</p>
+                </div>
               </div>
-              <p class="task-details-sheet__value">{{ formattedDueAt }}</p>
+
+              <div class="task-details-sheet__info-column">
+                <div class="task-details-sheet__info-item">
+                  <p class="task-details-sheet__label">Ответственный</p>
+                  <p class="task-details-sheet__value">{{ displayResponsible }}</p>
+                </div>
+                <div class="task-details-sheet__info-item">
+                  <p class="task-details-sheet__label">Источник</p>
+                  <p class="task-details-sheet__value">{{ displayTrafficSource }}</p>
+                </div>
+                <div class="task-details-sheet__info-item">
+                  <div class="task-details-sheet__row">
+                    <p class="task-details-sheet__label">Крайний срок</p>
+                    <button type="button" class="task-details-sheet__link" @click="openDateModal">
+                      Изменить
+                    </button>
+                  </div>
+                  <p class="task-details-sheet__value">{{ formattedDueAt }}</p>
+                </div>
+              </div>
             </div>
 
             <div class="task-details-sheet__field">
@@ -311,8 +387,7 @@ async function handleNavigationClick() {
                   v-model="commentDraft"
                   class="task-details-sheet__comment-area"
                   rows="4"
-                  placeholder="Комментарий к задаче..."
-                  @blur="persistTaskComment"
+                  placeholder="Напишите комментарий..."
                 />
 
                 <div class="task-details-sheet__comment-box-foot">
@@ -323,9 +398,27 @@ async function handleNavigationClick() {
                     multiple
                     @change="handleAttachmentChange"
                   />
-                  <button type="button" class="task-details-sheet__attachment-btn" @click="triggerAttachmentPick">
-                    Прикрепить файл
-                  </button>
+                  <div class="task-details-sheet__comment-box-actions">
+                    <button
+                      type="button"
+                      class="task-details-sheet__close-btn"
+                      title="Прикрепить файл"
+                      aria-label="Прикрепить файл"
+                      @click="triggerAttachmentPick"
+                    >
+                      <NIcon :size="16" :component="AttachOutline" />
+                    </button>
+                    <button
+                      type="button"
+                      class="task-details-sheet__close-btn"
+                      title="Отправить комментарий"
+                      aria-label="Отправить комментарий"
+                      :disabled="!commentDraft.trim()"
+                      @click="sendTaskComment"
+                    >
+                      <NIcon :size="16" :component="PaperPlaneOutline" />
+                    </button>
+                  </div>
 
                   <EntityAttachmentList
                     :attachments="attachmentItems"
@@ -532,10 +625,34 @@ async function handleNavigationClick() {
   gap: 6px;
 }
 
+.task-details-sheet__info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.task-details-sheet__info-column {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.task-details-sheet__info-item {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
 .task-details-sheet__row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .task-details-sheet__label {
@@ -548,6 +665,9 @@ async function handleNavigationClick() {
   margin: 0;
   color: #1a202c;
   font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .task-details-sheet__link {
@@ -632,26 +752,15 @@ async function handleNavigationClick() {
   display: none;
 }
 
-.task-details-sheet__attachment-btn {
-  align-self: flex-start;
-  padding: 8px 12px;
-  border: 1px solid #d1d9e2;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #4a5568;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
+.task-details-sheet__comment-box-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.task-details-sheet__attachment-btn:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #1a202c;
+.task-details-sheet__comment-box-actions .task-details-sheet__close-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .task-details-sheet__timeline {

@@ -22,6 +22,10 @@ function normalizeTask(raw: any): Task {
   const leadId = raw.leadId ?? raw.lead_id
   const dealId = raw.dealId ?? raw.deal_id
   const createdBy = raw.createdBy ?? raw.created_by
+  const clientFirstName = raw.clientFirstName ?? raw.client_first_name
+  const clientPatronymic = raw.clientPatronymic ?? raw.client_patronymic
+  const clientPhone = raw.clientPhone ?? raw.client_phone
+  const trafficSource = raw.trafficSource ?? raw.traffic_source
   const parsedCreatedAt = new Date(createdAtValue)
   const dueAt =
     dueAtValue === null || dueAtValue === undefined || dueAtValue === ''
@@ -64,6 +68,10 @@ function normalizeTask(raw: any): Task {
     dueAt: dueAt !== null && Number.isNaN(dueAt) ? null : dueAt,
     leadId: leadId ? String(leadId) : undefined,
     dealId: dealId ? String(dealId) : undefined,
+    clientFirstName: String(clientFirstName ?? '').trim(),
+    clientPatronymic: String(clientPatronymic ?? '').trim(),
+    clientPhone: String(clientPhone ?? '').trim(),
+    trafficSource: String(trafficSource ?? '').trim(),
     createdBy: String(createdBy ?? ''),
     createdAt: Number.isNaN(parsedCreatedAt.getTime()) ? new Date() : parsedCreatedAt,
     status: raw.status === 'completed' ? 'completed' : 'active',
