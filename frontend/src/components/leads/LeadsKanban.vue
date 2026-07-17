@@ -5,6 +5,7 @@ import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
 import { TrashOutline } from '@vicons/ionicons5'
 import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
+import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
 import { useAuth } from '@/composables/useAuth'
 import { getAuthToken } from '@/api/session'
 import { useDeals } from '@/composables/useDeals'
@@ -105,12 +106,7 @@ const persistedLeadProductionJSON = ref('')
 let leadPickupDeliverySaveTimer: ReturnType<typeof setTimeout> | null = null
 let leadProductsSaveTimer: ReturnType<typeof setTimeout> | null = null
 let leadProductionSaveTimer: ReturnType<typeof setTimeout> | null = null
-const productionNomenclatureOptions = [
-  { label: 'Перетяжка руля', value: 'Перетяжка руля' },
-  { label: 'Установка чехлов', value: 'Установка чехлов' },
-  { label: 'Ремонт стёкол', value: 'Ремонт стёкол' },
-  { label: 'Пошив ковриков', value: 'Пошив ковриков' },
-]
+const productionNomenclatureOptions = [...PRODUCTION_NOMENCLATURE_OPTIONS]
 const productionEmployeeOptions = [
   { label: 'Никита Хачересов', value: 'Никита Хачересов' },
   { label: 'Сергей Геворкян', value: 'Сергей Геворкян' },

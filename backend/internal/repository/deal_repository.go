@@ -17,28 +17,36 @@ type DealRepository struct {
 }
 
 const dealSelectSQL = `
-  id::text,
-  lead_id::text,
-  deal_number,
-  first_name,
-  COALESCE(patronymic, ''),
-  phone,
-  traffic_source,
-  status::text,
-  total_amount,
-  COALESCE(deal_comments, ''),
-  COALESCE(failure_reason, ''),
-  created_by::text,
-  created_at,
-  updated_at,
-  production_nomenclature,
-  production_due_at,
-  production_employee,
-  COALESCE(pickup_address, ''),
-  pickup_date,
-  COALESCE(delivery_address, ''),
-  delivery_date,
-  COALESCE(courier, '')
+  d.id::text,
+  d.lead_id::text,
+  d.deal_number,
+  d.first_name,
+  COALESCE(d.patronymic, ''),
+  d.phone,
+  d.traffic_source,
+  d.status::text,
+  d.total_amount,
+  COALESCE(d.deal_comments, ''),
+  COALESCE(d.failure_reason, ''),
+  CASE
+    WHEN COALESCE(u.last_name, '') = '' AND COALESCE(u.first_name, '') = '' THEN d.created_by::text
+    ELSE trim(concat_ws(' ', COALESCE(u.last_name, ''), COALESCE(u.first_name, '')))
+  END AS created_by_name,
+  d.created_at,
+  d.updated_at,
+  d.production_nomenclature,
+  d.production_due_at,
+  d.production_employee,
+  COALESCE(d.pickup_address, ''),
+  d.pickup_date,
+  COALESCE(d.delivery_address, ''),
+  d.delivery_date,
+  COALESCE(d.courier, '')
+`
+
+const dealFromSQL = `
+FROM deals d
+LEFT JOIN users u ON u.id = d.created_by
 `
 
 func NewDealRepository(db *pgxpool.Pool) *DealRepository {
@@ -47,10 +55,9 @@ func NewDealRepository(db *pgxpool.Pool) *DealRepository {
 
 func (r *DealRepository) List(ctx context.Context) ([]model.Deal, error) {
 	query := `
-SELECT` + dealSelectSQL + `
-FROM deals
-WHERE deleted_at IS NULL
-ORDER BY created_at DESC
+SELECT` + dealSelectSQL + dealFromSQL + `
+WHERE d.deleted_at IS NULL
+ORDER BY d.created_at DESC
 `
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
@@ -454,9 +461,8 @@ func (r *DealRepository) GetByID(ctx context.Context, dealID string) (model.Deal
 
 func (r *DealRepository) getByID(ctx context.Context, dealID string) (model.Deal, error) {
 	query := `
-SELECT` + dealSelectSQL + `
-FROM deals
-WHERE id = $1::uuid AND deleted_at IS NULL
+SELECT` + dealSelectSQL + dealFromSQL + `
+WHERE d.id = $1::uuid AND d.deleted_at IS NULL
 `
 	row := r.db.QueryRow(ctx, query, dealID)
 	return scanDeal(row)
@@ -464,9 +470,8 @@ WHERE id = $1::uuid AND deleted_at IS NULL
 
 func (r *DealRepository) getByIDTx(ctx context.Context, tx pgx.Tx, dealID string) (model.Deal, error) {
 	query := `
-SELECT` + dealSelectSQL + `
-FROM deals
-WHERE id = $1::uuid AND deleted_at IS NULL
+SELECT` + dealSelectSQL + dealFromSQL + `
+WHERE d.id = $1::uuid AND d.deleted_at IS NULL
 `
 	row := tx.QueryRow(ctx, query, dealID)
 	return scanDeal(row)

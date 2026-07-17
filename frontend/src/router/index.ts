@@ -47,6 +47,26 @@ const router = createRouter({
           meta: { title: 'Календарь производства', sectionName: 'production-calendar' },
         },
         {
+          path: 'salary',
+          component: () => import('@/layouts/SalaryLayout.vue'),
+          meta: { title: 'Зарплата', sectionName: 'salary' },
+          redirect: { name: 'salary-add-deal' },
+          children: [
+            {
+              path: 'add-deal',
+              name: 'salary-add-deal',
+              component: () => import('@/views/salary/SalaryAddDealView.vue'),
+              meta: { title: 'Добавить сделку', sectionName: 'salary' },
+            },
+            {
+              path: 'report',
+              name: 'salary-report',
+              component: () => import('@/views/salary/SalaryReportView.vue'),
+              meta: { title: 'Отчёт', sectionName: 'salary' },
+            },
+          ],
+        },
+        {
           path: 'employees',
           component: () => import('@/layouts/EmployeesLayout.vue'),
           meta: { title: 'Сотрудники', requiresAdmin: true },

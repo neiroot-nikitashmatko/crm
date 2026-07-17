@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
 import { TrashOutline } from '@vicons/ionicons5'
 import { DEAL_KANBAN_COLUMNS } from '@/constants/deals'
+import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
 import { useDeals } from '@/composables/useDeals'
 import { useLeads } from '@/composables/useLeads'
 import { useTasks } from '@/composables/useTasks'
@@ -89,12 +90,7 @@ let pickupDeliverySaveTimer: ReturnType<typeof setTimeout> | null = null
 let dealProductsSaveTimer: ReturnType<typeof setTimeout> | null = null
 let productionSaveTimer: ReturnType<typeof setTimeout> | null = null
 
-const productionNomenclatureOptions = [
-  { label: 'Перетяжка руля', value: 'Перетяжка руля' },
-  { label: 'Установка чехлов', value: 'Установка чехлов' },
-  { label: 'Ремонт стёкол', value: 'Ремонт стёкол' },
-  { label: 'Пошив ковриков', value: 'Пошив ковриков' },
-]
+const productionNomenclatureOptions = [...PRODUCTION_NOMENCLATURE_OPTIONS]
 const productionEmployeeOptions = [
   { label: 'Никита Хачересов', value: 'Никита Хачересов' },
   { label: 'Сергей Геворкян', value: 'Сергей Геворкян' },

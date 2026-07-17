@@ -17,6 +17,7 @@ func NewRouter(
 	attachmentHandler *AttachmentHandler,
 	beelineHandler *BeelineIntegrationHandler,
 	eventsHandler *EventsHandler,
+	salaryEntryHandler *SalaryEntryHandler,
 	jwtManager *auth.Manager,
 	corsOrigins []string,
 ) http.Handler {
@@ -46,6 +47,9 @@ func NewRouter(
 	mux.HandleFunc("/api/v1/users/", userHandler.Item)
 
 	mux.HandleFunc("/api/v1/attachments/", attachmentHandler.Item)
+
+	mux.HandleFunc("/api/v1/salary-entries", salaryEntryHandler.Collection)
+	mux.HandleFunc("/api/v1/salary-entries/", salaryEntryHandler.Item)
 
 	mux.HandleFunc("/api/v1/integrations/beeline/xsi-events", beelineHandler.XSIEvents)
 	// Allow Beeline to append extra path segments (e.g. /null) and allow embedding secret in path.

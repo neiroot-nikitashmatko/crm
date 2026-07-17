@@ -22,6 +22,7 @@ const masterSections = new Set([
   'leads',
   'deals',
   'production-calendar',
+  'salary',
 ])
 
 function normalizePosition(position?: string): 'manager' | 'master' | '' {

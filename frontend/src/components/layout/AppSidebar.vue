@@ -7,6 +7,7 @@ import {
   CheckboxOutline,
   CubeOutline,
   CalendarOutline,
+  CashOutline,
   IdCardOutline,
 } from '@vicons/ionicons5'
 import { useAuth } from '@/composables/useAuth'
@@ -35,6 +36,7 @@ const menuItems = [
     icon: CalendarOutline,
     adminOnly: false,
   },
+  { label: 'Зарплата', name: 'salary-add-deal', sectionName: 'salary', icon: CashOutline, adminOnly: false },
   { label: 'Сотрудники', name: 'employees-list', sectionName: 'employees', icon: IdCardOutline, adminOnly: true },
 ]
 
@@ -49,6 +51,9 @@ const activeName = computed(() => {
   const name = route.name as string
   if (name === 'employees-list' || name === 'employees-new') {
     return 'employees-list'
+  }
+  if (name === 'salary-add-deal' || name === 'salary-report') {
+    return 'salary-add-deal'
   }
 
   return name

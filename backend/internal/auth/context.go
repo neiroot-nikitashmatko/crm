@@ -20,3 +20,11 @@ func UserIDFromContext(ctx context.Context) string {
 	}
 	return claims.UserID
 }
+
+func RoleFromContext(ctx context.Context) string {
+	claims, ok := ClaimsFromContext(ctx)
+	if !ok {
+		return ""
+	}
+	return claims.Role
+}

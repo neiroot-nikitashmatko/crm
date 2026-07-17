@@ -41,6 +41,7 @@ func main() {
 	catalogProductRepo := repository.NewCatalogProductRepository(db)
 	attachmentRepo := repository.NewAttachmentRepository(db)
 	activityRepo := repository.NewActivityRepository(db)
+	salaryEntryRepo := repository.NewSalaryEntryRepository(db)
 
 	jwtManager, err := auth.NewManager(cfg.JWTSecret, cfg.JWTTTL)
 	if err != nil {
@@ -55,6 +56,7 @@ func main() {
 	dealService := service.NewDealService(dealRepo, attachmentService, activityService)
 	taskService := service.NewTaskService(taskRepo, attachmentService, activityService)
 	catalogProductService := service.NewCatalogProductService(catalogProductRepo)
+	salaryEntryService := service.NewSalaryEntryService(salaryEntryRepo, dealRepo, userRepo)
 
 	eventsBus := service.NewEventBus()
 	beelineIntegrationService := service.NewBeelineIntegrationService(
@@ -75,6 +77,7 @@ func main() {
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 	beelineHandler := handler.NewBeelineIntegrationHandler(beelineIntegrationService)
 	eventsHandler := handler.NewEventsHandler(eventsBus)
+	salaryEntryHandler := handler.NewSalaryEntryHandler(salaryEntryService)
 
 	router := handler.NewRouter(
 		authHandler,
@@ -86,6 +89,7 @@ func main() {
 		attachmentHandler,
 		beelineHandler,
 		eventsHandler,
+		salaryEntryHandler,
 		jwtManager,
 		cfg.CORSOrigins,
 	)

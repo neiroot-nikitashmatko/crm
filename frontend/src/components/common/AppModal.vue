@@ -206,11 +206,27 @@ watch(show, (isOpen, wasOpen) => {
   border-radius: 10px;
 }
 
-.app-modal__date-panel .n-date-panel {
+.app-modal__date-panel .n-date-panel,
+.app-modal__date-panel.n-date-panel {
   width: 292px;
   max-width: 100%;
   margin: 0;
   border: 0;
   box-shadow: none;
+}
+
+.app-modal__body--date .n-date-panel-actions {
+  justify-content: center;
+}
+
+.app-modal__body--date .n-date-panel-actions__prefix {
+  display: none;
+}
+
+.app-modal__body--date .n-date-panel-actions__suffix {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-self: center;
 }
 </style>
