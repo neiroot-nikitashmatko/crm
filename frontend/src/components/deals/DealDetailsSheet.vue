@@ -853,7 +853,9 @@ async function removeAttachment(attachmentId: string) {
                 <div class="deal-details-sheet__info-row">
                   <dt>Создатель</dt>
                   <dd>
-                    <span class="deal-details-sheet__value">{{ selectedDeal.createdBy }}</span>
+                    <span class="deal-details-sheet__value">{{
+                      selectedDeal.createdByName || '—'
+                    }}</span>
                   </dd>
                 </div>
                 <div class="deal-details-sheet__info-row">

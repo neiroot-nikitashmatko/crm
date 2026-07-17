@@ -73,6 +73,7 @@ function normalizeDeal(raw: any): Deal {
   const failureReason = raw.failureReason ?? raw.failure_reason
   const dealNumber = raw.dealNumber ?? raw.deal_number
   const createdBy = raw.createdBy ?? raw.created_by
+  const createdByName = raw.createdByName ?? raw.created_by_name
   const leadId = raw.leadId ?? raw.lead_id
   const totalAmount = raw.totalAmount ?? raw.total_amount
   const patronymic = raw.patronymic ?? ''
@@ -93,6 +94,7 @@ function normalizeDeal(raw: any): Deal {
     failureReason: String(failureReason ?? ''),
     createdAt: Number(createdAt ?? Date.now()),
     createdBy: String(createdBy ?? ''),
+    createdByName: String(createdByName ?? '').trim(),
     products: Array.isArray(rawProducts)
       ? rawProducts.map((item: any) => ({
           title: String(item?.title ?? item?.name ?? ''),

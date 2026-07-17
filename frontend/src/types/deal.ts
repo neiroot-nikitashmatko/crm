@@ -36,6 +36,7 @@ export interface Deal {
   failureReason: string
   createdAt: number
   createdBy: string
+  createdByName: string
   products: DealProduct[]
   production: {
     nomenclature: string

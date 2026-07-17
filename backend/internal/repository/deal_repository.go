@@ -28,8 +28,9 @@ const dealSelectSQL = `
   d.total_amount,
   COALESCE(d.deal_comments, ''),
   COALESCE(d.failure_reason, ''),
+  d.created_by::text,
   CASE
-    WHEN COALESCE(u.last_name, '') = '' AND COALESCE(u.first_name, '') = '' THEN d.created_by::text
+    WHEN COALESCE(u.last_name, '') = '' AND COALESCE(u.first_name, '') = '' THEN ''
     ELSE trim(concat_ws(' ', COALESCE(u.last_name, ''), COALESCE(u.first_name, '')))
   END AS created_by_name,
   d.created_at,
@@ -526,6 +527,7 @@ func scanDeal(scanner dealScanner) (model.Deal, error) {
 		&deal.DealComments,
 		&deal.FailureReason,
 		&deal.CreatedBy,
+		&deal.CreatedByName,
 		&createdAt,
 		&updatedAt,
 		&deal.Production.Nomenclature,

@@ -33,14 +33,15 @@ type Deal struct {
 	DealComments    string         `json:"dealComments"`
 	FailureReason   string         `json:"failureReason"`
 	CreatedBy       string         `json:"createdBy"`
+	CreatedByName   string         `json:"createdByName"`
 	CreatedAt       int64          `json:"createdAt"`
 	UpdatedAt       int64          `json:"updatedAt"`
 	ProductionDueAt *int64         `json:"productionDueAt"`
 	Production      DealProduction `json:"production"`
-	PickupDelivery  PickupDelivery  `json:"pickupDelivery"`
-	Products        []DealProduct   `json:"products"`
-	Attachments     []Attachment    `json:"attachments"`
-	Activities      []Activity      `json:"activities"`
+	PickupDelivery  PickupDelivery `json:"pickupDelivery"`
+	Products        []DealProduct  `json:"products"`
+	Attachments     []Attachment   `json:"attachments"`
+	Activities      []Activity     `json:"activities"`
 }
 
 type CreateDealFromLeadInput struct {
