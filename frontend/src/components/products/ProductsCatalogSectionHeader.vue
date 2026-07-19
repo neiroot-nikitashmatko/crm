@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { AddOutline } from '@vicons/ionicons5'
+import { NIcon } from 'naive-ui'
+
 const emit = defineEmits<{
   addProduct: []
 }>()
@@ -14,11 +17,12 @@ function handleAddProductClick() {
     <div class="products-catalog-section-header__actions">
       <button
         type="button"
-        class="products-catalog-section-header__action"
+        class="products-catalog-section-header__create-btn"
+        title="Добавить товар"
         aria-label="Добавить товар"
         @click="handleAddProductClick"
       >
-        Добавить товар
+        <NIcon :size="18" :component="AddOutline" />
       </button>
       <slot name="actions" />
     </div>
@@ -32,7 +36,7 @@ function handleAddProductClick() {
   justify-content: space-between;
   flex-shrink: 0;
   height: 56px;
-  padding: 0 24px;
+  padding: 0 16px 0 24px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -52,19 +56,26 @@ function handleAddProductClick() {
   min-height: 32px;
 }
 
-.products-catalog-section-header__action {
-  padding: 8px 14px;
-  border: 1px solid #1f883d;
+.products-catalog-section-header__create-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d9e2;
   border-radius: 8px;
-  background: #1f883d;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
+  background: #ffffff;
+  color: #475569;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.products-catalog-section-header__action:hover {
-  background: #197a35;
+.products-catalog-section-header__create-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1f2937;
 }
 </style>

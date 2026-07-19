@@ -10,6 +10,15 @@ import { getLeadsKanbanHeight } from '@/constants/layout'
 import DealDetailsSheet from './DealDetailsSheet.vue'
 import DealsKanbanColumn from './DealsKanbanColumn.vue'
 
+const props = withDefaults(
+  defineProps<{
+    searchQuery?: string
+  }>(),
+  {
+    searchQuery: '',
+  },
+)
+
 const route = useRoute()
 const router = useRouter()
 const { deals, loadDeals } = useDeals()
@@ -18,6 +27,29 @@ const selectedDealId = ref<string | null>(null)
 const kanbanHeightPx = ref(getLeadsKanbanHeight())
 const resizeHandler = () => {
   kanbanHeightPx.value = getLeadsKanbanHeight()
+}
+
+function phoneDigits(value: string): string {
+  return value.replace(/\D/g, '').replace(/^8/, '7')
+}
+
+function dealMatchesSearch(deal: Deal, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return true
+  }
+
+  const fullName = `${deal.firstName} ${deal.patronymic}`.trim().toLowerCase()
+  if (fullName.includes(normalizedQuery)) {
+    return true
+  }
+
+  const queryDigits = phoneDigits(normalizedQuery)
+  if (queryDigits.length > 0 && phoneDigits(deal.phone).includes(queryDigits)) {
+    return true
+  }
+
+  return false
 }
 
 async function openDealFromRouteQuery() {
@@ -71,6 +103,9 @@ const groupedDeals = computed(() => {
     failed: [],
   }
   for (const deal of deals.value) {
+    if (!dealMatchesSearch(deal, props.searchQuery)) {
+      continue
+    }
     map[resolveDealKanbanColumnId(deal)].push(deal)
   }
   return map

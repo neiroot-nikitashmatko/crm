@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import DealsSectionHeader from '@/components/deals/DealsSectionHeader.vue'
 import DealsKanban from '@/components/deals/DealsKanban.vue'
+
+const searchQuery = ref('')
 </script>
 
 <template>
   <div class="deals-page">
-    <DealsSectionHeader />
-    <DealsKanban />
+    <DealsSectionHeader v-model:search-query="searchQuery" />
+    <DealsKanban :search-query="searchQuery" />
   </div>
 </template>
 

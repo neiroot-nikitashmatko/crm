@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import LeadsSectionHeader from '@/components/leads/LeadsSectionHeader.vue'
 import LeadsKanban from '@/components/leads/LeadsKanban.vue'
+
+const searchQuery = ref('')
 </script>
 
 <template>
   <div class="leads-page">
-    <LeadsSectionHeader />
-    <LeadsKanban />
+    <LeadsSectionHeader v-model:search-query="searchQuery" />
+    <LeadsKanban :search-query="searchQuery" />
   </div>
 </template>
 

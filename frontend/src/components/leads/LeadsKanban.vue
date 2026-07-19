@@ -34,6 +34,15 @@ import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import type { ProductRow } from '@/types/productRow'
 import { rowsToDealProducts } from '@/utils/products'
 
+const props = withDefaults(
+  defineProps<{
+    searchQuery?: string
+  }>(),
+  {
+    searchQuery: '',
+  },
+)
+
 type LeadDetailsSectionId = 'lead-info' | 'task' | 'products' | 'pickup' | 'delivery' | 'production'
 
 const LEAD_DETAILS_SECTIONS: Array<{ id: LeadDetailsSectionId; title: string }> = [
@@ -223,8 +232,33 @@ const sortedLeadActivities = computed(() => {
   return [...selectedLead.value.activities].sort((a, b) => b.createdAt - a.createdAt)
 })
 
+function phoneDigits(value: string): string {
+  return value.replace(/\D/g, '').replace(/^8/, '7')
+}
+
+function leadMatchesSearch(lead: Lead, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return true
+  }
+
+  const fullName = `${lead.firstName} ${lead.patronymic}`.trim().toLowerCase()
+  if (fullName.includes(normalizedQuery)) {
+    return true
+  }
+
+  const queryDigits = phoneDigits(normalizedQuery)
+  if (queryDigits.length > 0 && phoneDigits(lead.phone).includes(queryDigits)) {
+    return true
+  }
+
+  return false
+}
+
 function getColumnLeads(columnId: string) {
-  return leads.value.filter((lead) => lead.columnId === columnId)
+  return leads.value.filter(
+    (lead) => lead.columnId === columnId && leadMatchesSearch(lead, props.searchQuery),
+  )
 }
 
 async function handleAddLead(columnId: string, payload: NewLeadForm) {
