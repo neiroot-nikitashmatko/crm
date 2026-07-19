@@ -7,22 +7,58 @@ export function setUnauthorizedHandler(handler: () => void): void {
   unauthorizedHandler = handler
 }
 
-export function getAuthToken(): string | null {
+function readStorageItem(key: string): string | null {
   if (typeof window === 'undefined') return null
-  return sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+
+  const fromLocal = localStorage.getItem(key)
+  if (fromLocal !== null) {
+    return fromLocal
+  }
+
+  // Миграция со старого sessionStorage (был изолирован по вкладкам)
+  const fromSession = sessionStorage.getItem(key)
+  if (fromSession !== null) {
+    localStorage.setItem(key, fromSession)
+    sessionStorage.removeItem(key)
+    return fromSession
+  }
+
+  return null
+}
+
+function writeStorageItem(key: string, value: string): void {
+  localStorage.setItem(key, value)
+  sessionStorage.removeItem(key)
+}
+
+function removeStorageItem(key: string): void {
+  localStorage.removeItem(key)
+  sessionStorage.removeItem(key)
+}
+
+export function getAuthToken(): string | null {
+  return readStorageItem(AUTH_TOKEN_STORAGE_KEY)
 }
 
 export function setAuthToken(token: string): void {
-  sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+  writeStorageItem(AUTH_TOKEN_STORAGE_KEY, token)
 }
 
 export function clearAuthToken(): void {
-  sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+  removeStorageItem(AUTH_TOKEN_STORAGE_KEY)
+}
+
+export function getAuthUserRaw(): string | null {
+  return readStorageItem(AUTH_USER_STORAGE_KEY)
+}
+
+export function setAuthUserRaw(value: string): void {
+  writeStorageItem(AUTH_USER_STORAGE_KEY, value)
 }
 
 export function clearAuthSession(): void {
   clearAuthToken()
-  sessionStorage.removeItem(AUTH_USER_STORAGE_KEY)
+  removeStorageItem(AUTH_USER_STORAGE_KEY)
 }
 
 export function notifyUnauthorized(): void {

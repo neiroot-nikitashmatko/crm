@@ -6,7 +6,7 @@ import {
   persistAuthSession,
   type AuthUser,
 } from '@/api/auth'
-import { AUTH_USER_STORAGE_KEY, getAuthToken } from '@/api/session'
+import { getAuthToken, getAuthUserRaw } from '@/api/session'
 
 const user = ref<AuthUser | null>(null)
 
@@ -40,7 +40,7 @@ function loadStoredUser() {
     return
   }
   try {
-    const raw = sessionStorage.getItem(AUTH_USER_STORAGE_KEY)
+    const raw = getAuthUserRaw()
     if (!raw) return
     const parsed = JSON.parse(raw) as Partial<AuthUser>
     if (!parsed.id || !parsed.phone || !parsed.role) return

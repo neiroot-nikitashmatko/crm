@@ -1,9 +1,5 @@
 import { getApiBaseUrl } from '@/api/httpClient'
-import {
-  AUTH_USER_STORAGE_KEY,
-  clearAuthSession,
-  setAuthToken,
-} from '@/api/session'
+import { clearAuthSession, setAuthToken, setAuthUserRaw } from '@/api/session'
 
 interface LoginResponseUser {
   id: string
@@ -67,7 +63,7 @@ export async function loginByPhone(phone: string, password: string): Promise<Log
 
 export function persistAuthSession(user: LoginResponseUser, token: string): void {
   setAuthToken(token)
-  sessionStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user))
+  setAuthUserRaw(JSON.stringify(user))
 }
 
 export function clearPersistedAuthSession(): void {
