@@ -41,9 +41,15 @@ function loadStoredUser() {
   }
   try {
     const raw = getAuthUserRaw()
-    if (!raw) return
+    if (!raw) {
+      user.value = null
+      return
+    }
     const parsed = JSON.parse(raw) as Partial<AuthUser>
-    if (!parsed.id || !parsed.phone || !parsed.role) return
+    if (!parsed.id || !parsed.phone || !parsed.role) {
+      user.value = null
+      return
+    }
     user.value = {
       id: parsed.id,
       phone: parsed.phone,
@@ -62,6 +68,10 @@ function loadStoredUser() {
 loadStoredUser()
 
 export function useAuth() {
+  function hydrateFromStorage() {
+    loadStoredUser()
+  }
+
   const isAuthenticated = computed(() => user.value !== null && Boolean(getAuthToken()))
   const isAdmin = computed(() => user.value?.role === 'admin')
   const rawPosition = computed(() => user.value?.position?.trim() ?? '')
@@ -111,6 +121,7 @@ export function useAuth() {
     isAdmin,
     canAccessSection,
     getDefaultRouteName,
+    hydrateFromStorage,
     login,
     logout,
   }

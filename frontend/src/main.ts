@@ -1,9 +1,12 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import { setUnauthorizedHandler } from '@/api/session'
+import { migrateAuthStorage, setUnauthorizedHandler } from '@/api/session'
 import { useAuth } from '@/composables/useAuth'
 import './styles/global.css'
+
+migrateAuthStorage()
+useAuth().hydrateFromStorage()
 
 const app = createApp(App)
 

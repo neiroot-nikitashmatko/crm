@@ -92,7 +92,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const { isAuthenticated, isAdmin, canAccessSection, getDefaultRouteName } = useAuth()
+  const { isAuthenticated, isAdmin, canAccessSection, getDefaultRouteName, hydrateFromStorage } =
+    useAuth()
+
+  hydrateFromStorage()
 
   if (to.meta.public) {
     if (to.name === 'login' && isAuthenticated.value) {

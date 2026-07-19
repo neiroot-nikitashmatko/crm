@@ -7,23 +7,29 @@ export function setUnauthorizedHandler(handler: () => void): void {
   unauthorizedHandler = handler
 }
 
-function readStorageItem(key: string): string | null {
-  if (typeof window === 'undefined') return null
-
-  const fromLocal = localStorage.getItem(key)
-  if (fromLocal !== null) {
-    return fromLocal
+function migrateKeyFromSession(key: string): void {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(key) !== null) {
+    sessionStorage.removeItem(key)
+    return
   }
-
-  // Миграция со старого sessionStorage (был изолирован по вкладкам)
   const fromSession = sessionStorage.getItem(key)
   if (fromSession !== null) {
     localStorage.setItem(key, fromSession)
     sessionStorage.removeItem(key)
-    return fromSession
   }
+}
 
-  return null
+/** Переносит сессию из sessionStorage в localStorage (общий для вкладок). */
+export function migrateAuthStorage(): void {
+  migrateKeyFromSession(AUTH_TOKEN_STORAGE_KEY)
+  migrateKeyFromSession(AUTH_USER_STORAGE_KEY)
+}
+
+function readStorageItem(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  migrateKeyFromSession(key)
+  return localStorage.getItem(key)
 }
 
 function writeStorageItem(key: string, value: string): void {
