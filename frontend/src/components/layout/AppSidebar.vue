@@ -113,11 +113,12 @@ function navigate(name: string) {
 }
 
 .app-sidebar__item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 14px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -125,7 +126,9 @@ function navigate(name: string) {
   color: #4a5568;
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .app-sidebar__item:hover {
@@ -134,14 +137,29 @@ function navigate(name: string) {
 }
 
 .app-sidebar__item--active {
-  background: #edf2f7;
-  color: #1a202c;
-  font-weight: 500;
+  background: #eef7f0;
+  color: #14532d;
+  font-weight: 600;
+}
+
+.app-sidebar__item--active::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #1f883d;
 }
 
 .app-sidebar__icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+}
+
+.app-sidebar__item--active .app-sidebar__icon {
+  color: #1f883d;
 }
 </style>
