@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { LogOutOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 import { useAuth } from '@/composables/useAuth'
+import logoUrl from '@/assets/logo.png'
 
 const emit = defineEmits<{
   toggleSidebar: []
@@ -19,23 +20,27 @@ function handleLogout() {
 
 <template>
   <header class="app-header">
-    <button
-      type="button"
-      class="app-header__menu-btn"
-      aria-label="Открыть главное меню"
-      @click="emit('toggleSidebar')"
-    >
-      <svg
-        class="app-header__menu-btn-icon"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
+    <div class="app-header__brand">
+      <button
+        type="button"
+        class="app-header__menu-btn"
+        aria-label="Открыть главное меню"
+        @click="emit('toggleSidebar')"
       >
-        <rect x="4" y="4" width="16" height="2" rx="1" />
-        <rect x="4" y="11" width="16" height="2" rx="1" />
-        <rect x="4" y="18" width="16" height="2" rx="1" />
-      </svg>
-    </button>
+        <svg
+          class="app-header__menu-btn-icon"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <rect x="4" y="4" width="16" height="2" rx="1" />
+          <rect x="4" y="11" width="16" height="2" rx="1" />
+          <rect x="4" y="18" width="16" height="2" rx="1" />
+        </svg>
+      </button>
+
+      <img class="app-header__logo" :src="logoUrl" alt="NEIROOT" />
+    </div>
 
     <button
       type="button"
@@ -59,6 +64,23 @@ function handleLogout() {
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
   z-index: 100;
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-header__logo {
+  display: block;
+  height: 30px;
+  width: auto;
+  max-width: min(220px, 45vw);
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 
 .app-header__menu-btn {
