@@ -4,7 +4,9 @@ let audioContext: AudioContext | null = null
 let unlocked = false
 
 function getAudioContext(): AudioContext | null {
-  const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  const Ctx =
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!Ctx) return null
   if (!audioContext) {
     audioContext = new Ctx()
@@ -12,17 +14,25 @@ function getAudioContext(): AudioContext | null {
   return audioContext
 }
 
-/** Call once after any user gesture so browsers allow playback. */
+/** Call after a user gesture so Chrome allows playback. */
 export async function unlockNewLeadSound(): Promise<void> {
   const ctx = getAudioContext()
   if (!ctx) return
-  if (ctx.state === 'suspended') {
-    try {
+
+  try {
+    if (ctx.state === 'suspended') {
       await ctx.resume()
-    } catch {
-      return
     }
+    // Chrome often needs an actual node start inside a gesture to fully unlock.
+    const buffer = ctx.createBuffer(1, 1, ctx.sampleRate)
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.connect(ctx.destination)
+    source.start(0)
+  } catch {
+    return
   }
+
   unlocked = ctx.state === 'running'
 }
 
@@ -32,7 +42,7 @@ function tone(ctx: AudioContext, frequency: number, startAt: number, duration: n
   oscillator.type = 'sine'
   oscillator.frequency.value = frequency
   gain.gain.setValueAtTime(0.0001, startAt)
-  gain.gain.exponentialRampToValueAtTime(0.12, startAt + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.18, startAt + 0.015)
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration)
   oscillator.connect(gain)
   gain.connect(ctx.destination)
@@ -42,22 +52,13 @@ function tone(ctx: AudioContext, frequency: number, startAt: number, duration: n
 
 /** Plays when a new lead appears in column «Новый лид». */
 export async function playNewLeadSound(): Promise<void> {
+  await unlockNewLeadSound()
   const ctx = getAudioContext()
-  if (!ctx) return
+  if (!ctx || ctx.state !== 'running') return
 
-  if (ctx.state === 'suspended') {
-    try {
-      await ctx.resume()
-    } catch {
-      return
-    }
-  }
-  if (ctx.state !== 'running') return
-  unlocked = true
-
-  const t = ctx.currentTime
-  tone(ctx, 880, t, 0.12)
-  tone(ctx, 1175, t + 0.14, 0.16)
+  const t = ctx.currentTime + 0.01
+  tone(ctx, 880, t, 0.14)
+  tone(ctx, 1175, t + 0.15, 0.18)
 }
 
 export function isNewLeadSoundUnlocked(): boolean {

@@ -35,7 +35,7 @@ import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import type { ProductRow } from '@/types/productRow'
 import { rowsToDealProducts } from '@/utils/products'
-import { playNewLeadSound, unlockNewLeadSound } from '@/utils/newLeadSound'
+import { playNewLeadSound, unlockNewLeadSound, isNewLeadSoundUnlocked } from '@/utils/newLeadSound'
 
 const props = withDefaults(
   defineProps<{
@@ -283,8 +283,13 @@ function getColumnLeads(columnId: string) {
 }
 
 async function handleAddLead(columnId: string, payload: NewLeadForm) {
+  // Unlock audio while we still have the user-gesture stack (before await).
+  void unlockNewLeadSound()
   try {
     await addLead(payload, columnId)
+    if (columnId === 'new') {
+      void playNewLeadSound()
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Не удалось создать лид'
     console.error('Не удалось создать лид', error)
@@ -814,10 +819,15 @@ onMounted(() => {
   void startLeadEventsStream()
 
   const unlock = () => {
-    void unlockNewLeadSound()
+    void unlockNewLeadSound().then(() => {
+      if (isNewLeadSoundUnlocked()) {
+        window.removeEventListener('pointerdown', unlock)
+        window.removeEventListener('keydown', unlock)
+      }
+    })
   }
-  window.addEventListener('pointerdown', unlock, { once: true })
-  window.addEventListener('keydown', unlock, { once: true })
+  window.addEventListener('pointerdown', unlock)
+  window.addEventListener('keydown', unlock)
 })
 
 onBeforeUnmount(() => {
