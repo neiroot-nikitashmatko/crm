@@ -63,6 +63,10 @@ const LEAD_DETAILS_SECTIONS: Array<{ id: LeadDetailsSectionId; title: string }> 
   { id: 'delivery', title: 'Доставка' },
   { id: 'production', title: 'Производство' },
 ]
+
+function isAvitoChatLead(lead: Lead | null | undefined): boolean {
+  return (lead?.trafficSource ?? '').trim() === 'Авито Чат'
+}
 const WORKING_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 const TIME_MINUTE_STEP = 5
 const TIME_PICKER_PROPS = {
@@ -134,6 +138,12 @@ const selectedLead = computed(() =>
   selectedLeadId.value
     ? leads.value.find((lead) => lead.id === selectedLeadId.value) ?? null
     : null,
+)
+
+const visibleLeadDetailsSections = computed(() =>
+  LEAD_DETAILS_SECTIONS.filter(
+    (section) => section.id !== 'chat' || isAvitoChatLead(selectedLead.value),
+  ),
 )
 const canConfirmFailureReason = computed(() => failureReasonDraft.value.trim().length > 0)
 const leadCommentDrafts = reactive<Record<string, string>>({})
@@ -1162,7 +1172,7 @@ async function removeLeadAttachmentFile(attachmentId: string) {
           <div class="lead-details-sheet__left">
             <aside class="lead-details-sheet__sections">
               <button
-                v-for="section in LEAD_DETAILS_SECTIONS"
+                v-for="section in visibleLeadDetailsSections"
                 :key="section.id"
                 type="button"
                 class="lead-details-sheet__section-btn"
@@ -1249,7 +1259,10 @@ async function removeLeadAttachmentFile(attachmentId: string) {
               </dl>
               </div>
 
-            <div v-else-if="activeDetailsSection === 'chat'" class="lead-details-sheet__panel lead-details-sheet__panel--chat">
+            <div
+              v-else-if="selectedLead && activeDetailsSection === 'chat' && isAvitoChatLead(selectedLead)"
+              class="lead-details-sheet__panel lead-details-sheet__panel--chat"
+            >
               <LeadAvitoChatPanel :key="selectedLead.id" :lead-id="selectedLead.id" />
             </div>
 
