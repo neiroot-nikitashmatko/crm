@@ -35,7 +35,12 @@ import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import type { ProductRow } from '@/types/productRow'
 import { rowsToDealProducts } from '@/utils/products'
-import { playNewLeadSound, unlockNewLeadSound, isNewLeadSoundUnlocked } from '@/utils/newLeadSound'
+import {
+  notifyNewLeadArrival,
+  unlockNewLeadSound,
+  isNewLeadSoundUnlocked,
+  bindNewLeadSoundVisibility,
+} from '@/utils/newLeadSound'
 
 const props = withDefaults(
   defineProps<{
@@ -288,7 +293,11 @@ async function handleAddLead(columnId: string, payload: NewLeadForm) {
   try {
     await addLead(payload, columnId)
     if (columnId === 'new') {
-      void playNewLeadSound()
+      void notifyNewLeadArrival({
+        firstName: payload.firstName,
+        patronymic: payload.patronymic,
+        trafficSource: payload.trafficSource,
+      })
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Не удалось создать лид'
@@ -744,7 +753,12 @@ function applyLeadCreatedEvent(rawLead: any) {
   if (leads.value.some((item) => item.id === normalized.id)) return
   leads.value = [normalized, ...leads.value]
   if (normalized.columnId === 'new') {
-    void playNewLeadSound()
+    void notifyNewLeadArrival({
+      firstName: normalized.firstName,
+      patronymic: normalized.patronymic,
+      trafficSource: normalized.trafficSource,
+      leadNumber: normalized.leadNumber,
+    })
   }
 }
 
@@ -815,6 +829,8 @@ async function startLeadEventsStream() {
   }
 }
 
+let unbindNewLeadSoundVisibility: (() => void) | null = null
+
 onMounted(() => {
   void startLeadEventsStream()
 
@@ -828,9 +844,13 @@ onMounted(() => {
   }
   window.addEventListener('pointerdown', unlock)
   window.addEventListener('keydown', unlock)
+
+  unbindNewLeadSoundVisibility = bindNewLeadSoundVisibility()
 })
 
 onBeforeUnmount(() => {
+  unbindNewLeadSoundVisibility?.()
+  unbindNewLeadSoundVisibility = null
   if (leadEventsAbortController) {
     leadEventsAbortController.abort()
     leadEventsAbortController = null

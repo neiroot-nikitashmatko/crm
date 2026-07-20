@@ -1,7 +1,8 @@
-/** Short notification chime via Web Audio (no asset file). */
+/** New-lead alerts: in-tab sound + OS notification when tab/window is in background. */
 
 let audioContext: AudioContext | null = null
 let unlocked = false
+let notificationPermissionAsked = false
 
 function getAudioContext(): AudioContext | null {
   const Ctx =
@@ -14,7 +15,7 @@ function getAudioContext(): AudioContext | null {
   return audioContext
 }
 
-/** Call after a user gesture so Chrome allows playback. */
+/** Call after a user gesture so Chrome allows playback / notifications. */
 export async function unlockNewLeadSound(): Promise<void> {
   const ctx = getAudioContext()
   if (!ctx) return
@@ -23,7 +24,6 @@ export async function unlockNewLeadSound(): Promise<void> {
     if (ctx.state === 'suspended') {
       await ctx.resume()
     }
-    // Chrome often needs an actual node start inside a gesture to fully unlock.
     const buffer = ctx.createBuffer(1, 1, ctx.sampleRate)
     const source = ctx.createBufferSource()
     source.buffer = buffer
@@ -34,6 +34,22 @@ export async function unlockNewLeadSound(): Promise<void> {
   }
 
   unlocked = ctx.state === 'running'
+  void ensureNotificationPermission()
+}
+
+async function ensureNotificationPermission(): Promise<void> {
+  if (typeof Notification === 'undefined') return
+  if (notificationPermissionAsked) return
+  if (Notification.permission !== 'default') {
+    notificationPermissionAsked = true
+    return
+  }
+  notificationPermissionAsked = true
+  try {
+    await Notification.requestPermission()
+  } catch {
+    // ignore
+  }
 }
 
 function tone(ctx: AudioContext, frequency: number, startAt: number, duration: number) {
@@ -50,17 +66,80 @@ function tone(ctx: AudioContext, frequency: number, startAt: number, duration: n
   oscillator.stop(startAt + duration + 0.02)
 }
 
-/** Plays when a new lead appears in column «Новый лид». */
-export async function playNewLeadSound(): Promise<void> {
+export async function playNewLeadSound(): Promise<boolean> {
   await unlockNewLeadSound()
   const ctx = getAudioContext()
-  if (!ctx || ctx.state !== 'running') return
+  if (!ctx || ctx.state !== 'running') return false
 
-  const t = ctx.currentTime + 0.01
-  tone(ctx, 880, t, 0.14)
-  tone(ctx, 1175, t + 0.15, 0.18)
+  try {
+    const t = ctx.currentTime + 0.01
+    tone(ctx, 880, t, 0.14)
+    tone(ctx, 1175, t + 0.15, 0.18)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function showNewLeadNotification(title: string, body: string): void {
+  if (typeof Notification === 'undefined') return
+  if (Notification.permission !== 'granted') return
+
+  try {
+    const notification = new Notification(title, {
+      body,
+      tag: 'proclients-new-lead',
+      renotify: true,
+      silent: false,
+    })
+    notification.onclick = () => {
+      window.focus()
+      notification.close()
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export type NewLeadNotifyInfo = {
+  firstName?: string
+  patronymic?: string
+  trafficSource?: string
+  leadNumber?: number
+}
+
+/**
+ * Sound when tab is active; OS notification (with system sound) when Chrome is
+ * minimized / another tab is focused. Sound is still attempted either way.
+ */
+export async function notifyNewLeadArrival(info: NewLeadNotifyInfo = {}): Promise<void> {
+  const played = await playNewLeadSound()
+  const tabHidden = typeof document !== 'undefined' && document.visibilityState !== 'visible'
+
+  // Background / minimized Chrome: browsers often block page audio — use OS notification.
+  if (!tabHidden && played) return
+
+  const name = [info.firstName, info.patronymic].filter(Boolean).join(' ').trim()
+  const source = (info.trafficSource ?? '').trim()
+  const numberLabel =
+    typeof info.leadNumber === 'number' && info.leadNumber > 0 ? `#${info.leadNumber}` : ''
+
+  const title = numberLabel ? `Новый лид ${numberLabel}` : 'Новый лид'
+  const bodyParts = [name || 'Без имени', source].filter(Boolean)
+  showNewLeadNotification(title, bodyParts.join(' · ') || 'Появился новый лид в канбане')
 }
 
 export function isNewLeadSoundUnlocked(): boolean {
   return unlocked
+}
+
+/** Resume audio when user returns to the CRM tab. */
+export function bindNewLeadSoundVisibility(): () => void {
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') {
+      void unlockNewLeadSound()
+    }
+  }
+  document.addEventListener('visibilitychange', onVisible)
+  return () => document.removeEventListener('visibilitychange', onVisible)
 }
