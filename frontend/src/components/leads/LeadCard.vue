@@ -24,7 +24,8 @@ const displayName = computed(() => {
   return parts.length > 0 ? parts.join(' ') : 'Без имени'
 })
 
-const displayPhone = computed(() => props.lead.phone.trim() || '—')
+const hasPhone = computed(() => props.lead.phone.trim().length > 0)
+const displayPhone = computed(() => props.lead.phone.trim())
 const displayTrafficSource = computed(() => props.lead.trafficSource.trim() || '—')
 const displayCreatedAt = computed(() =>
   new Intl.DateTimeFormat('ru-RU', {
@@ -43,15 +44,21 @@ const cardStyle = computed(() => ({
 </script>
 
 <template>
-  <article class="lead-card" :class="presetClass" :style="cardStyle" @click="emit('open')">
+  <article
+    class="lead-card"
+    :class="[presetClass, { 'lead-card--no-phone': !hasPhone }]"
+    :style="cardStyle"
+    @click="emit('open')"
+  >
     <div class="lead-card__meta">
       <p class="lead-card__number">Лид #{{ lead.leadNumber }}</p>
       <p class="lead-card__created-at">{{ displayCreatedAt }}</p>
     </div>
 
-    <p class="lead-card__name">{{ displayName }}</p>
-
-    <p class="lead-card__phone">{{ displayPhone }}</p>
+    <div class="lead-card__identity">
+      <p class="lead-card__name">{{ displayName }}</p>
+      <p v-if="hasPhone" class="lead-card__phone">{{ displayPhone }}</p>
+    </div>
 
     <div class="lead-card__row">
       <span class="lead-card__label">Источник</span>
@@ -90,6 +97,20 @@ const cardStyle = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.lead-card__identity {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 42px;
+}
+
+.lead-card--no-phone .lead-card__identity {
+  justify-content: center;
 }
 
 .lead-card__name {
@@ -122,6 +143,8 @@ const cardStyle = computed(() => ({
   display: flex;
   align-items: baseline;
   gap: 6px;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .lead-card__label {

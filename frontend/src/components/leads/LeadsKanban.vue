@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
 import { TrashOutline } from '@vicons/ionicons5'
+import { getApiBaseUrl } from '@/api/httpClient'
 import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
 import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
@@ -25,6 +26,7 @@ import {
   PICKUP_SECTION_LOCKED_MESSAGE,
 } from '@/utils/pickupDelivery'
 import LeadsKanbanColumn from './LeadsKanbanColumn.vue'
+import LeadAvitoChatPanel from './LeadAvitoChatPanel.vue'
 import TaskDetailsSheet from '../tasks/TaskDetailsSheet.vue'
 import DateTimeField from '@/components/common/DateTimeField.vue'
 import AppModal from '@/components/common/AppModal.vue'
@@ -43,10 +45,18 @@ const props = withDefaults(
   },
 )
 
-type LeadDetailsSectionId = 'lead-info' | 'task' | 'products' | 'pickup' | 'delivery' | 'production'
+type LeadDetailsSectionId =
+  | 'lead-info'
+  | 'chat'
+  | 'task'
+  | 'products'
+  | 'pickup'
+  | 'delivery'
+  | 'production'
 
 const LEAD_DETAILS_SECTIONS: Array<{ id: LeadDetailsSectionId; title: string }> = [
   { id: 'lead-info', title: 'Информация о лиде' },
+  { id: 'chat', title: 'Чат' },
   { id: 'task', title: 'Задача' },
   { id: 'products', title: 'Услуги/Товары' },
   { id: 'pickup', title: 'Самовывоз' },
@@ -728,12 +738,15 @@ async function startLeadEventsStream() {
   leadEventsAbortController = controller
 
   try {
-    const response = await fetch('/api/v1/events/leads', {
+    const response = await fetch(`${getApiBaseUrl()}/api/v1/events/leads`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,
     })
-    if (!response.ok || !response.body) return
+    if (!response.ok || !response.body) {
+      leadEventsAbortController = null
+      return
+    }
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
@@ -778,6 +791,8 @@ async function startLeadEventsStream() {
     }
   } catch {
     // ignore network errors (user may navigate away)
+  } finally {
+    leadEventsAbortController = null
   }
 }
 
@@ -1160,7 +1175,10 @@ async function removeLeadAttachmentFile(attachmentId: string) {
               </button>
             </aside>
 
-            <section class="lead-details-sheet__content">
+            <section
+              class="lead-details-sheet__content"
+              :class="{ 'lead-details-sheet__content--chat': activeDetailsSection === 'chat' }"
+            >
               <div v-if="activeDetailsSection === 'lead-info'" class="lead-details-sheet__panel">
               <h3 class="lead-details-sheet__panel-title">Информация о лиде</h3>
 
@@ -1229,6 +1247,10 @@ async function removeLeadAttachmentFile(attachmentId: string) {
                   </dd>
                 </div>
               </dl>
+              </div>
+
+            <div v-else-if="activeDetailsSection === 'chat'" class="lead-details-sheet__panel lead-details-sheet__panel--chat">
+              <LeadAvitoChatPanel :key="selectedLead.id" :lead-id="selectedLead.id" />
             </div>
 
             <div v-else-if="activeDetailsSection === 'task'" class="lead-details-sheet__panel">
@@ -1913,10 +1935,30 @@ async function removeLeadAttachmentFile(attachmentId: string) {
   padding: 16px;
 }
 
+.lead-details-sheet__content--chat {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+}
+
 .lead-details-sheet__panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.lead-details-sheet__panel--chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 0;
+  overflow: hidden;
+}
+
+.lead-details-sheet__panel--chat :deep(.lead-avito-chat) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .lead-details-sheet__panel-title {

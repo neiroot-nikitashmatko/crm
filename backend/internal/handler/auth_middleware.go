@@ -14,6 +14,9 @@ func isPublicPath(path string) bool {
 	if strings.HasPrefix(path, "/api/v1/integrations/beeline/xsi-events") {
 		return true
 	}
+	if strings.HasPrefix(path, "/api/v1/integrations/avito/webhook") {
+		return true
+	}
 	return false
 }
 

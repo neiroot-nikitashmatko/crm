@@ -59,3 +59,43 @@ func (h *EventsHandler) LeadCreatedStream(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (h *EventsHandler) AvitoMessageStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming unsupported")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	ch, unsubscribe := h.events.SubscribeAvitoMessage()
+	defer unsubscribe()
+
+	fmt.Fprintf(w, "event: ready\ndata: {\"ok\":true}\n\n")
+	flusher.Flush()
+
+	keepAlive := time.NewTicker(25 * time.Second)
+	defer keepAlive.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-keepAlive.C:
+			fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+			flusher.Flush()
+		case event := <-ch:
+			payload, _ := json.Marshal(event)
+			fmt.Fprintf(w, "event: avito-message\ndata: %s\n\n", payload)
+			flusher.Flush()
+		}
+	}
+}

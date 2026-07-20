@@ -20,6 +20,13 @@ type Config struct {
 	BeelineWebhookSecret string
 	BeelineCreatedByUser string
 	BeelineWebhookDebug  bool
+
+	AvitoClientID        string
+	AvitoClientSecret    string
+	AvitoUserID          int64
+	AvitoWebhookSecret   string
+	AvitoCreatedByUserID string
+	AvitoWebhookDebug    bool
 }
 
 func Load() (Config, error) {
@@ -36,6 +43,17 @@ func Load() (Config, error) {
 		BeelineWebhookSecret: strings.TrimSpace(os.Getenv("BEELINE_WEBHOOK_SECRET")),
 		BeelineCreatedByUser: strings.TrimSpace(os.Getenv("BEELINE_CREATED_BY_USER_ID")),
 		BeelineWebhookDebug:  parseBoolEnv(os.Getenv("BEELINE_WEBHOOK_DEBUG")),
+
+		AvitoClientID:        strings.TrimSpace(os.Getenv("AVITO_CLIENT_ID")),
+		AvitoClientSecret:    strings.TrimSpace(os.Getenv("AVITO_CLIENT_SECRET")),
+		AvitoUserID:          parseInt64Env(os.Getenv("AVITO_USER_ID")),
+		AvitoWebhookSecret:   strings.TrimSpace(os.Getenv("AVITO_WEBHOOK_SECRET")),
+		AvitoCreatedByUserID: strings.TrimSpace(os.Getenv("AVITO_CREATED_BY_USER_ID")),
+		AvitoWebhookDebug:    parseBoolEnv(os.Getenv("AVITO_WEBHOOK_DEBUG")),
+	}
+
+	if cfg.AvitoCreatedByUserID == "" {
+		cfg.AvitoCreatedByUserID = cfg.BeelineCreatedByUser
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -65,6 +83,24 @@ func parseBoolEnv(raw string) bool {
 	}
 }
 
+func parseInt64Env(raw string) int64 {
+	value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return value
+}
+
+func unquoteEnvValue(value string) string {
+	if len(value) >= 2 {
+		if (value[0] == '"' && value[len(value)-1] == '"') ||
+			(value[0] == '\'' && value[len(value)-1] == '\'') {
+			return value[1 : len(value)-1]
+		}
+	}
+	return value
+}
+
 func loadDotEnvIfExists() {
 	paths := []string{
 		".env",
@@ -90,7 +126,7 @@ func loadDotEnvIfExists() {
 			}
 
 			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
+			value := unquoteEnvValue(strings.TrimSpace(parts[1]))
 			if key == "" {
 				continue
 			}

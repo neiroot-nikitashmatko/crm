@@ -34,9 +34,10 @@ func (s *LeadService) List(ctx context.Context) ([]model.Lead, error) {
 }
 
 func (s *LeadService) Create(ctx context.Context, input model.CreateLeadInput) (model.Lead, error) {
-	if strings.TrimSpace(input.FirstName) == "" || strings.TrimSpace(input.Phone) == "" {
-		return model.Lead{}, errors.New("firstName and phone are required")
+	if strings.TrimSpace(input.FirstName) == "" {
+		return model.Lead{}, errors.New("firstName is required")
 	}
+	input.Phone = strings.TrimSpace(input.Phone)
 	if strings.TrimSpace(input.ColumnID) == "" {
 		input.ColumnID = "new"
 	}

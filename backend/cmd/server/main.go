@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"proclients/backend/internal/auth"
+	"proclients/backend/internal/avito"
 	"proclients/backend/internal/config"
 	"proclients/backend/internal/handler"
 	"proclients/backend/internal/repository"
@@ -42,6 +43,8 @@ func main() {
 	attachmentRepo := repository.NewAttachmentRepository(db)
 	activityRepo := repository.NewActivityRepository(db)
 	salaryEntryRepo := repository.NewSalaryEntryRepository(db)
+	avitoChatRepo := repository.NewAvitoChatRepository(db)
+	quickReplyRepo := repository.NewQuickReplyRepository(db)
 
 	jwtManager, err := auth.NewManager(cfg.JWTSecret, cfg.JWTTTL)
 	if err != nil {
@@ -57,6 +60,7 @@ func main() {
 	taskService := service.NewTaskService(taskRepo, attachmentService, activityService)
 	catalogProductService := service.NewCatalogProductService(catalogProductRepo)
 	salaryEntryService := service.NewSalaryEntryService(salaryEntryRepo, dealRepo, userRepo)
+	quickReplyService := service.NewQuickReplyService(quickReplyRepo)
 
 	eventsBus := service.NewEventBus()
 	beelineIntegrationService := service.NewBeelineIntegrationService(
@@ -68,6 +72,23 @@ func main() {
 		cfg.BeelineWebhookDebug,
 	)
 
+	avitoClient := avito.NewClient(cfg.AvitoClientID, cfg.AvitoClientSecret, cfg.AvitoUserID)
+	avitoIntegrationService := service.NewAvitoIntegrationService(
+		avitoClient,
+		avitoChatRepo,
+		leadService,
+		leadRepo,
+		eventsBus,
+		cfg.AvitoWebhookSecret,
+		cfg.AvitoCreatedByUserID,
+		cfg.AvitoWebhookDebug,
+	)
+	if avitoIntegrationService.Enabled() {
+		log.Printf("avito integration enabled (user_id=%d)", cfg.AvitoUserID)
+	} else {
+		log.Printf("avito integration disabled (missing AVITO_* env)")
+	}
+
 	authHandler := handler.NewAuthHandler(authService, jwtManager)
 	leadHandler := handler.NewLeadHandler(leadService, attachmentService)
 	dealHandler := handler.NewDealHandler(dealService, attachmentService)
@@ -76,8 +97,10 @@ func main() {
 	userHandler := handler.NewUserHandler(userService)
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 	beelineHandler := handler.NewBeelineIntegrationHandler(beelineIntegrationService)
+	avitoHandler := handler.NewAvitoIntegrationHandler(avitoIntegrationService)
 	eventsHandler := handler.NewEventsHandler(eventsBus)
 	salaryEntryHandler := handler.NewSalaryEntryHandler(salaryEntryService)
+	quickReplyHandler := handler.NewQuickReplyHandler(quickReplyService)
 
 	router := handler.NewRouter(
 		authHandler,
@@ -88,8 +111,10 @@ func main() {
 		userHandler,
 		attachmentHandler,
 		beelineHandler,
+		avitoHandler,
 		eventsHandler,
 		salaryEntryHandler,
+		quickReplyHandler,
 		jwtManager,
 		cfg.CORSOrigins,
 	)
