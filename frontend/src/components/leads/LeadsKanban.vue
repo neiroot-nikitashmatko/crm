@@ -35,6 +35,7 @@ import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import type { ProductRow } from '@/types/productRow'
 import { rowsToDealProducts } from '@/utils/products'
+import { playNewLeadSound, unlockNewLeadSound } from '@/utils/newLeadSound'
 
 const props = withDefaults(
   defineProps<{
@@ -737,6 +738,9 @@ function applyLeadCreatedEvent(rawLead: any) {
   const normalized = normalizeLead(rawLead)
   if (leads.value.some((item) => item.id === normalized.id)) return
   leads.value = [normalized, ...leads.value]
+  if (normalized.columnId === 'new') {
+    void playNewLeadSound()
+  }
 }
 
 async function startLeadEventsStream() {
@@ -808,6 +812,12 @@ async function startLeadEventsStream() {
 
 onMounted(() => {
   void startLeadEventsStream()
+
+  const unlock = () => {
+    void unlockNewLeadSound()
+  }
+  window.addEventListener('pointerdown', unlock, { once: true })
+  window.addEventListener('keydown', unlock, { once: true })
 })
 
 onBeforeUnmount(() => {
