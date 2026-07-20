@@ -89,7 +89,6 @@ function showNewLeadNotification(title: string, body: string): void {
     const notification = new Notification(title, {
       body,
       tag: 'proclients-new-lead',
-      renotify: true,
       silent: false,
     })
     notification.onclick = () => {
