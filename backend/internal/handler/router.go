@@ -20,6 +20,7 @@ func NewRouter(
 	eventsHandler *EventsHandler,
 	salaryEntryHandler *SalaryEntryHandler,
 	quickReplyHandler *QuickReplyHandler,
+	notificationHandler *NotificationHandler,
 	jwtManager *auth.Manager,
 	corsOrigins []string,
 ) http.Handler {
@@ -63,7 +64,10 @@ func NewRouter(
 
 	mux.HandleFunc("/api/v1/integrations/avito/webhook", avitoHandler.Webhook)
 	mux.HandleFunc("/api/v1/integrations/avito/subscribe", avitoHandler.Subscribe)
+	mux.HandleFunc("/api/v1/integrations/avito/chats", avitoHandler.ChatsCollection)
 	mux.HandleFunc("/api/v1/integrations/avito/chats/", avitoHandler.LeadChat)
+
+	mux.HandleFunc("/api/v1/notifications/summary", notificationHandler.Summary)
 
 	// Authenticated SSE stream with internal events.
 	mux.HandleFunc("/api/v1/events/leads", eventsHandler.LeadCreatedStream)

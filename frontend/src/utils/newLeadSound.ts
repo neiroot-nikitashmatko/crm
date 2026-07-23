@@ -181,14 +181,14 @@ function isCrmWindowInBackground(): boolean {
   return false
 }
 
-function showNewLeadNotification(title: string, body: string): void {
+function showOsNotification(title: string, body: string, tagPrefix: string): void {
   if (typeof Notification === 'undefined') return
   if (Notification.permission !== 'granted') return
 
   try {
     const notification = new Notification(title, {
       body,
-      tag: `proclients-new-lead-${Date.now()}`,
+      tag: `${tagPrefix}-${Date.now()}`,
       silent: false,
       requireInteraction: false,
     })
@@ -229,7 +229,34 @@ export async function notifyNewLeadArrival(info: NewLeadNotifyInfo = {}): Promis
 
   const title = numberLabel ? `Новый лид ${numberLabel}` : 'Новый лид'
   const bodyParts = [name || 'Без имени', source].filter(Boolean)
-  showNewLeadNotification(title, bodyParts.join(' · ') || 'Появился новый лид в канбане')
+  showOsNotification(
+    title,
+    bodyParts.join(' · ') || 'Появился новый лид в канбане',
+    'proclients-new-lead',
+  )
+}
+
+export type NewChatMessageNotifyInfo = {
+  nickname?: string
+  preview?: string
+}
+
+/** Sound/OS alert for an incoming message in an already existing chat (not a brand-new lead). */
+export async function notifyNewChatMessageArrival(
+  info: NewChatMessageNotifyInfo = {},
+): Promise<void> {
+  const inBackground = isCrmWindowInBackground()
+  const played = await playNewLeadSound()
+
+  if (!inBackground && played) return
+
+  const nickname = (info.nickname ?? '').trim() || 'Клиент Авито'
+  const preview = (info.preview ?? '').trim()
+  showOsNotification(
+    'Новое сообщение в чате',
+    preview ? `${nickname}: ${preview}` : nickname,
+    'proclients-chat-message',
+  )
 }
 
 export function isNewLeadSoundUnlocked(): boolean {

@@ -12,6 +12,7 @@ const user = ref<AuthUser | null>(null)
 
 const managerSections = new Set([
   'leads',
+  'chats',
   'deals',
   'tasks',
   'products-catalog',

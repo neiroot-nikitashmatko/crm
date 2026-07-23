@@ -89,6 +89,8 @@ func main() {
 		log.Printf("avito integration disabled (missing AVITO_* env)")
 	}
 
+	notificationService := service.NewNotificationService(leadRepo, avitoChatRepo)
+
 	authHandler := handler.NewAuthHandler(authService, jwtManager)
 	leadHandler := handler.NewLeadHandler(leadService, attachmentService)
 	dealHandler := handler.NewDealHandler(dealService, attachmentService)
@@ -97,10 +99,11 @@ func main() {
 	userHandler := handler.NewUserHandler(userService)
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 	beelineHandler := handler.NewBeelineIntegrationHandler(beelineIntegrationService)
-	avitoHandler := handler.NewAvitoIntegrationHandler(avitoIntegrationService)
+	avitoHandler := handler.NewAvitoIntegrationHandler(avitoIntegrationService, notificationService)
 	eventsHandler := handler.NewEventsHandler(eventsBus)
 	salaryEntryHandler := handler.NewSalaryEntryHandler(salaryEntryService)
 	quickReplyHandler := handler.NewQuickReplyHandler(quickReplyService)
+	notificationHandler := handler.NewNotificationHandler(notificationService)
 
 	router := handler.NewRouter(
 		authHandler,
@@ -115,6 +118,7 @@ func main() {
 		eventsHandler,
 		salaryEntryHandler,
 		quickReplyHandler,
+		notificationHandler,
 		jwtManager,
 		cfg.CORSOrigins,
 	)

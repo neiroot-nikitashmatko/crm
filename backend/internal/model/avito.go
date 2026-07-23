@@ -13,6 +13,7 @@ type AvitoChat struct {
 	ItemTitle      string    `json:"itemTitle"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
+	UnreadCount    int       `json:"unreadCount"`
 }
 
 type AvitoMessage struct {

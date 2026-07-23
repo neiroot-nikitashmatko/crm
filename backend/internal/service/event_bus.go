@@ -11,8 +11,9 @@ type LeadCreatedEvent struct {
 }
 
 type AvitoMessageEvent struct {
-	LeadID  string             `json:"leadId"`
-	Message model.AvitoMessage `json:"message"`
+	LeadID      string             `json:"leadId"`
+	Message     model.AvitoMessage `json:"message"`
+	CreatedLead bool               `json:"createdLead,omitempty"`
 }
 
 type EventBus struct {

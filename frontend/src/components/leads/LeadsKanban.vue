@@ -8,6 +8,7 @@ import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
 import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
 import { useAuth } from '@/composables/useAuth'
+import { useNotificationBadges } from '@/composables/useNotificationBadges'
 import { getAuthToken } from '@/api/session'
 import { useDeals } from '@/composables/useDeals'
 import { normalizeLead, useLeads, emptyPickupDelivery, emptyProduction } from '@/composables/useLeads'
@@ -85,6 +86,7 @@ const TIME_PICKER_PROPS = {
 const router = useRouter()
 const route = useRoute()
 const { logout } = useAuth()
+const { refreshNotificationSummary } = useNotificationBadges()
 const {
   leads,
   addLead,
@@ -292,6 +294,7 @@ async function handleAddLead(columnId: string, payload: NewLeadForm) {
   void unlockNewLeadSound()
   try {
     await addLead(payload, columnId)
+    void refreshNotificationSummary()
     if (columnId === 'new') {
       void notifyNewLeadArrival({
         firstName: payload.firstName,
@@ -377,6 +380,7 @@ async function moveSelectedLead(columnId: string) {
 
   try {
     await moveLeadToColumn(selectedLead.value.id, columnId)
+    void refreshNotificationSummary()
   } catch (error) {
     console.error('Не удалось обновить статус лида', error)
   }
@@ -396,6 +400,7 @@ async function confirmFailureReason() {
   try {
     await moveLeadToColumn(leadId, 'failed', reason)
     closeFailureReasonModal()
+    void refreshNotificationSummary()
   } catch (error) {
     console.error('Не удалось перевести лид в проваленные', error)
   }
@@ -733,6 +738,7 @@ async function handleCreateDealClick() {
     resetLeadRows(leadId)
     await completeLeadTasks(leadId)
     await moveLeadToColumn(leadId, 'deal')
+    void refreshNotificationSummary()
     closeLeadDetails()
     await router.push({ name: 'deals', query: { dealId: createdDeal.id } })
   } catch (error) {

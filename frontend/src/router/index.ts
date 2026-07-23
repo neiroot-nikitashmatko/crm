@@ -23,6 +23,12 @@ const router = createRouter({
           meta: { title: 'Лиды', sectionName: 'leads' },
         },
         {
+          path: 'chats',
+          name: 'chats',
+          component: () => import('@/views/ChatsView.vue'),
+          meta: { title: 'Чаты', sectionName: 'chats' },
+        },
+        {
           path: 'deals',
           name: 'deals',
           component: () => import('@/views/DealsView.vue'),

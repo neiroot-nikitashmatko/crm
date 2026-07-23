@@ -94,6 +94,17 @@ func (s *AvitoIntegrationService) GetChatForLead(ctx context.Context, leadID str
 	return chat, nil
 }
 
+func (s *AvitoIntegrationService) ListChats(ctx context.Context, userID string) ([]model.AvitoChat, error) {
+	items, err := s.avitoRepo.ListChats(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
+		return []model.AvitoChat{}, nil
+	}
+	return items, nil
+}
+
 func (s *AvitoIntegrationService) GetLeadChatBundle(ctx context.Context, leadID string) (AvitoLeadChatBundle, error) {
 	leadID = strings.TrimSpace(leadID)
 	if leadID == "" {
@@ -199,7 +210,7 @@ func (s *AvitoIntegrationService) SendMessageToLead(ctx context.Context, leadID,
 	}
 	if len(result) > 0 {
 		for _, item := range result {
-			s.publishAvitoMessage(leadID, item)
+			s.publishAvitoMessage(leadID, item, false)
 		}
 		return result, nil
 	}
@@ -225,7 +236,7 @@ func (s *AvitoIntegrationService) SendMessageToLead(ctx context.Context, leadID,
 			return result, insertErr
 		}
 		result = append(result, inserted)
-		s.publishAvitoMessage(leadID, inserted)
+		s.publishAvitoMessage(leadID, inserted, false)
 	}
 	return result, nil
 }
@@ -245,13 +256,14 @@ func isAllowedAvitoImage(file avito.UploadFile) bool {
 	return false
 }
 
-func (s *AvitoIntegrationService) publishAvitoMessage(leadID string, message model.AvitoMessage) {
+func (s *AvitoIntegrationService) publishAvitoMessage(leadID string, message model.AvitoMessage, createdLead bool) {
 	if s.events == nil || strings.TrimSpace(leadID) == "" || strings.TrimSpace(message.ID) == "" {
 		return
 	}
 	s.events.PublishAvitoMessage(AvitoMessageEvent{
-		LeadID:  leadID,
-		Message: message,
+		LeadID:      leadID,
+		Message:     message,
+		CreatedLead: createdLead,
 	})
 }
 
@@ -362,7 +374,7 @@ func (s *AvitoIntegrationService) HandleWebhook(ctx context.Context, rawBody []b
 		direction = "outgoing"
 	}
 
-	leadID, createdLead, err := s.ensureLeadForChat(ctx, msg.ChatID, msg.ItemID)
+	leadID, createdLead, err := s.ensureLeadForChat(ctx, msg.ChatID, msg.ItemID, direction)
 	if err != nil {
 		return AvitoWebhookResult{}, err
 	}
@@ -402,7 +414,7 @@ func (s *AvitoIntegrationService) HandleWebhook(ctx context.Context, rawBody []b
 	}
 
 	if inserted {
-		s.publishAvitoMessage(leadID, stored)
+		s.publishAvitoMessage(leadID, stored, createdLead)
 	}
 
 	return AvitoWebhookResult{
@@ -416,18 +428,32 @@ func (s *AvitoIntegrationService) HandleWebhook(ctx context.Context, rawBody []b
 	}, nil
 }
 
-func (s *AvitoIntegrationService) ensureLeadForChat(ctx context.Context, chatID string, itemID *int64) (leadID string, created bool, err error) {
+func (s *AvitoIntegrationService) ensureLeadForChat(
+	ctx context.Context,
+	chatID string,
+	itemID *int64,
+	direction string,
+) (leadID string, created bool, err error) {
 	existing, getErr := s.avitoRepo.GetByChatID(ctx, chatID)
 	if getErr != nil && getErr != pgx.ErrNoRows {
 		return "", false, getErr
 	}
 
 	if getErr == nil {
-		if _, leadErr := s.leadRepo.GetByID(ctx, existing.LeadID); leadErr == nil {
+		lead, leadErr := s.leadRepo.GetByID(ctx, existing.LeadID)
+		if leadErr == nil && lead.ColumnID != "failed" {
 			return existing.LeadID, false, nil
 		}
-		// Linked lead was soft-deleted (or missing) — create a new one and re-bind the chat.
-		s.logDebug("chat %s linked to inactive lead %s, recreating", chatID, existing.LeadID)
+		if leadErr == nil && lead.ColumnID == "failed" {
+			// New CRM lead only when the client writes again — not on our outgoing.
+			if direction != "incoming" {
+				return existing.LeadID, false, nil
+			}
+			s.logDebug("chat %s linked to failed lead %s, recreating", chatID, existing.LeadID)
+		} else {
+			// Linked lead was soft-deleted or missing — create a new one and re-bind.
+			s.logDebug("chat %s linked to inactive lead %s, recreating", chatID, existing.LeadID)
+		}
 	}
 
 	nickname := "Пользователь Авито"

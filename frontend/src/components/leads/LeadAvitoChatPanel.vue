@@ -11,12 +11,21 @@ import {
   sendAvitoLeadMessage,
   subscribeAvitoMessages,
 } from '@/api/avitoChat'
+import { useNotificationBadges } from '@/composables/useNotificationBadges'
 import type { LeadChatMessage, LeadChatParticipant } from '@/types/leadChat'
 import LeadQuickRepliesPanel from './LeadQuickRepliesPanel.vue'
 
-const props = defineProps<{
-  leadId: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    leadId: string
+    hideHeader?: boolean
+  }>(),
+  {
+    hideHeader: false,
+  },
+)
+
+const { markAvitoChatRead } = useNotificationBadges()
 
 const messages = ref<LeadChatMessage[]>([])
 const participant = ref<LeadChatParticipant>({
@@ -111,6 +120,9 @@ async function loadChat() {
     linked.value = bundle.linked
     participant.value = bundle.participant
     messages.value = bundle.messages
+    if (bundle.linked) {
+      void markAvitoChatRead(leadId)
+    }
   } catch (error) {
     linked.value = false
     messages.value = []
@@ -133,6 +145,9 @@ function startMessageStream() {
       if (leadId !== props.leadId) return
       linked.value = true
       upsertMessage(message)
+      if (message.direction === 'incoming') {
+        void markAvitoChatRead(props.leadId)
+      }
     },
     { signal: controller.signal },
   )
@@ -260,7 +275,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="lead-avito-chat">
-    <header class="lead-avito-chat__header">
+    <header v-if="!hideHeader" class="lead-avito-chat__header">
       <div class="lead-avito-chat__avatar" aria-hidden="true">
         <img
           v-if="participant.avatarUrl"

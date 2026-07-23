@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PeopleOutline,
+  ChatbubblesOutline,
   BriefcaseOutline,
   CheckboxOutline,
   CubeOutline,
@@ -26,6 +27,7 @@ const { isAdmin, canAccessSection } = useAuth()
 
 const menuItems = [
   { label: 'Лиды', name: 'leads', sectionName: 'leads', icon: PeopleOutline, adminOnly: false },
+  { label: 'Чаты', name: 'chats', sectionName: 'chats', icon: ChatbubblesOutline, adminOnly: false },
   { label: 'Сделки', name: 'deals', sectionName: 'deals', icon: BriefcaseOutline, adminOnly: false },
   { label: 'Задачи', name: 'tasks', sectionName: 'tasks', icon: CheckboxOutline, adminOnly: false },
   { label: 'Каталог товаров', name: 'products-catalog', sectionName: 'products-catalog', icon: CubeOutline, adminOnly: false },

@@ -280,6 +280,20 @@ func (r *LeadRepository) SoftDelete(ctx context.Context, leadID string) error {
 	return err
 }
 
+func (r *LeadRepository) CountByColumn(ctx context.Context, columnID string) (int, error) {
+	const query = `
+SELECT COUNT(*)::int
+FROM leads
+WHERE deleted_at IS NULL
+  AND column_id = $1
+`
+	var count int
+	if err := r.db.QueryRow(ctx, query, strings.TrimSpace(columnID)).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *LeadRepository) GetByID(ctx context.Context, leadID string) (model.Lead, error) {
 	query := `
 SELECT` + leadSelectSQL + `

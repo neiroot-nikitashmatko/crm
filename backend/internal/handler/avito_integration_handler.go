@@ -6,16 +6,21 @@ import (
 	"net/http"
 	"strings"
 
+	"proclients/backend/internal/auth"
 	"proclients/backend/internal/avito"
 	"proclients/backend/internal/service"
 )
 
 type AvitoIntegrationHandler struct {
-	service *service.AvitoIntegrationService
+	service       *service.AvitoIntegrationService
+	notifications *service.NotificationService
 }
 
-func NewAvitoIntegrationHandler(service *service.AvitoIntegrationService) *AvitoIntegrationHandler {
-	return &AvitoIntegrationHandler{service: service}
+func NewAvitoIntegrationHandler(
+	service *service.AvitoIntegrationService,
+	notifications *service.NotificationService,
+) *AvitoIntegrationHandler {
+	return &AvitoIntegrationHandler{service: service, notifications: notifications}
 }
 
 func (h *AvitoIntegrationHandler) Webhook(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +95,19 @@ func (h *AvitoIntegrationHandler) Subscribe(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "url": url})
 }
 
+func (h *AvitoIntegrationHandler) ChatsCollection(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	items, err := h.service.ListChats(r.Context(), auth.UserIDFromContext(r.Context()))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
 func (h *AvitoIntegrationHandler) LeadChat(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/integrations/avito/chats/")
 	parts := strings.Split(strings.Trim(path, "/"), "/")
@@ -110,6 +128,23 @@ func (h *AvitoIntegrationHandler) LeadChat(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		writeJSON(w, http.StatusOK, bundle)
+		return
+	}
+
+	if len(parts) == 2 && parts[1] == "read" {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if h.notifications == nil {
+			writeError(w, http.StatusInternalServerError, "notifications service is not configured")
+			return
+		}
+		if err := h.notifications.MarkAvitoChatRead(r.Context(), auth.UserIDFromContext(r.Context()), leadID); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 		return
 	}
 

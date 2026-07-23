@@ -107,6 +107,70 @@ LIMIT 1
 	return chat, err
 }
 
+func (r *AvitoChatRepository) ListChats(ctx context.Context, userID string) ([]model.AvitoChat, error) {
+	query := `
+SELECT
+  c.id::text,
+  c.chat_id,
+  c.lead_id::text,
+  c.peer_user_id,
+  c.peer_nickname,
+  c.peer_avatar_url,
+  c.item_id,
+  c.item_title,
+  c.created_at,
+  c.updated_at,
+  (
+    SELECT COUNT(*)::int
+    FROM avito_messages m
+    WHERE m.chat_id = c.chat_id
+      AND m.direction = 'incoming'
+      AND m.sent_at > COALESCE(
+        (
+          SELECT r.last_read_at
+          FROM avito_chat_reads r
+          WHERE r.user_id = $1::uuid
+            AND r.chat_id = c.chat_id
+        ),
+        TIMESTAMPTZ 'epoch'
+      )
+  ) AS unread_count
+FROM avito_chats c
+INNER JOIN leads l ON l.id = c.lead_id
+  AND l.deleted_at IS NULL
+  AND l.column_id <> 'failed'
+ORDER BY c.updated_at DESC, c.created_at DESC
+`
+	rows, err := r.db.Query(ctx, query, strings.TrimSpace(userID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]model.AvitoChat, 0)
+	for rows.Next() {
+		var chat model.AvitoChat
+		scanErr := rows.Scan(
+			&chat.ID,
+			&chat.ChatID,
+			&chat.LeadID,
+			&chat.PeerUserID,
+			&chat.PeerNickname,
+			&chat.PeerAvatarURL,
+			&chat.ItemID,
+			&chat.ItemTitle,
+			&chat.CreatedAt,
+			&chat.UpdatedAt,
+			&chat.UnreadCount,
+		)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		items = append(items, chat)
+	}
+	return items, rows.Err()
+}
+
 func (r *AvitoChatRepository) InsertMessage(ctx context.Context, input model.InsertAvitoMessageInput) (model.AvitoMessage, bool, error) {
 	query := `
 INSERT INTO avito_messages (
@@ -226,4 +290,47 @@ func scanAvitoMessage(row scannable) (model.AvitoMessage, error) {
 		msg.SentAt = time.Now().UTC()
 	}
 	return msg, nil
+}
+
+func (r *AvitoChatRepository) CountUnreadChatsForUser(ctx context.Context, userID string) (int, error) {
+	const query = `
+SELECT COUNT(*)::int
+FROM avito_chats c
+INNER JOIN leads l ON l.id = c.lead_id
+  AND l.deleted_at IS NULL
+  AND l.column_id <> 'failed'
+WHERE EXISTS (
+  SELECT 1
+  FROM avito_messages m
+  WHERE m.chat_id = c.chat_id
+    AND m.direction = 'incoming'
+    AND m.sent_at > COALESCE(
+      (
+        SELECT r.last_read_at
+        FROM avito_chat_reads r
+        WHERE r.user_id = $1::uuid
+          AND r.chat_id = c.chat_id
+      ),
+      TIMESTAMPTZ 'epoch'
+    )
+)
+`
+	var count int
+	if err := r.db.QueryRow(ctx, query, strings.TrimSpace(userID)).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *AvitoChatRepository) MarkChatReadByLeadID(ctx context.Context, userID string, leadID string) error {
+	const query = `
+INSERT INTO avito_chat_reads (user_id, chat_id, last_read_at)
+SELECT $1::uuid, c.chat_id, now()
+FROM avito_chats c
+WHERE c.lead_id = $2::uuid
+ON CONFLICT (user_id, chat_id) DO UPDATE
+SET last_read_at = EXCLUDED.last_read_at
+`
+	_, err := r.db.Exec(ctx, query, strings.TrimSpace(userID), strings.TrimSpace(leadID))
+	return err
 }

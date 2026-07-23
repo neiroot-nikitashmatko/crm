@@ -1,5 +1,14 @@
 import { ApiError, getApiBaseUrl, requestJson } from '@/api/httpClient'
 import { getAuthToken, notifyUnauthorized } from '@/api/session'
+import {
+  appendMockAvitoMessage,
+  getMockAvitoChats,
+  getMockAvitoLeadChat,
+  isAvitoChatsMockEnabled,
+  isMockAvitoLeadId,
+} from '@/mocks/avitoChats'
+import { getMockUnreadCountForLead } from '@/mocks/notificationBadges'
+import type { AvitoChatListItem } from '@/types/avitoChat'
 import type { LeadChatMessage, LeadChatParticipant } from '@/types/leadChat'
 
 export class AvitoChatApiError extends ApiError {
@@ -18,6 +27,9 @@ interface AvitoChatDto {
   peerAvatarUrl: string
   itemId?: number
   itemTitle: string
+  createdAt?: string
+  updatedAt?: string
+  unreadCount?: number
 }
 
 interface AvitoMessageDto {
@@ -36,6 +48,70 @@ interface AvitoLeadChatBundleResponse {
   linked: boolean
   chat?: AvitoChatDto
   messages: AvitoMessageDto[]
+}
+
+interface AvitoChatsListResponse {
+  items: AvitoChatDto[]
+}
+
+function toTimestamp(value?: string): number {
+  if (!value) return Date.now()
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : Date.now()
+}
+
+function normalizeChatListItem(raw: AvitoChatDto): AvitoChatListItem {
+  return {
+    id: raw.id,
+    chatId: raw.chatId,
+    leadId: raw.leadId,
+    peerNickname: (raw.peerNickname || '').trim() || 'Пользователь Авито',
+    peerAvatarUrl: (raw.peerAvatarUrl || '').trim(),
+    itemTitle: (raw.itemTitle || '').trim(),
+    updatedAt: toTimestamp(raw.updatedAt || raw.createdAt),
+    unreadCount: Math.max(0, Number(raw.unreadCount) || 0),
+  }
+}
+
+function withMockUnread(items: AvitoChatListItem[]): AvitoChatListItem[] {
+  if (!isAvitoChatsMockEnabled()) return items
+  return items.map((item) => {
+    if (!isMockAvitoLeadId(item.leadId)) return item
+    return {
+      ...item,
+      unreadCount: getMockUnreadCountForLead(item.leadId),
+    }
+  })
+}
+
+function withMockChats(items: AvitoChatListItem[]): AvitoChatListItem[] {
+  if (!isAvitoChatsMockEnabled()) return items
+  const mocks = withMockUnread(getMockAvitoChats())
+  if (import.meta.env.VITE_MOCK_AVITO_CHATS === 'true') {
+    return mocks
+  }
+  return [...mocks, ...items].sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+export async function fetchAvitoChats(): Promise<AvitoChatListItem[]> {
+  if (import.meta.env.VITE_MOCK_AVITO_CHATS === 'true') {
+    return withMockUnread(getMockAvitoChats())
+  }
+
+  try {
+    const payload = await requestJson<AvitoChatsListResponse>('/api/v1/integrations/avito/chats', {
+      method: 'GET',
+    })
+    return withMockChats((payload.items ?? []).map(normalizeChatListItem))
+  } catch (error) {
+    if (isAvitoChatsMockEnabled()) {
+      return withMockUnread(getMockAvitoChats())
+    }
+    if (error instanceof ApiError) {
+      throw new AvitoChatApiError(error.message, error.status)
+    }
+    throw error
+  }
 }
 
 interface AvitoMessagesResponse {
@@ -87,6 +163,11 @@ async function avitoRequestJson<T>(path: string, init?: RequestInit): Promise<T>
 }
 
 export async function fetchAvitoLeadChat(leadId: string): Promise<AvitoLeadChatBundle> {
+  if (isAvitoChatsMockEnabled() && isMockAvitoLeadId(leadId)) {
+    const mock = getMockAvitoLeadChat(leadId)
+    if (mock) return mock
+  }
+
   const payload = await avitoRequestJson<AvitoLeadChatBundleResponse>(
     `/api/v1/integrations/avito/chats/${encodeURIComponent(leadId)}`,
     { method: 'GET' },
@@ -107,6 +188,13 @@ export async function sendAvitoLeadMessage(
   text: string,
   files: File[] = [],
 ): Promise<LeadChatMessage[]> {
+  if (isAvitoChatsMockEnabled() && isMockAvitoLeadId(leadId)) {
+    if (files.length > 0) {
+      throw new AvitoChatApiError('В моках отправка файлов пока не поддержана', 400)
+    }
+    return appendMockAvitoMessage(leadId, text)
+  }
+
   const path = `/api/v1/integrations/avito/chats/${encodeURIComponent(leadId)}/messages`
 
   if (files.length === 0) {
@@ -160,7 +248,11 @@ export async function sendAvitoLeadMessage(
   return (payload.items ?? []).map(mapMessage)
 }
 
-export type AvitoMessageSSEHandler = (payload: { leadId: string; message: LeadChatMessage }) => void
+export type AvitoMessageSSEHandler = (payload: {
+  leadId: string
+  message: LeadChatMessage
+  createdLead: boolean
+}) => void
 
 export function subscribeAvitoMessages(
   onMessage: AvitoMessageSSEHandler,
@@ -198,11 +290,16 @@ export function subscribeAvitoMessages(
           if (line === '') {
             if (currentEvent === 'avito-message' && currentData.trim() !== '') {
               try {
-                const parsed = JSON.parse(currentData) as { leadId?: string; message?: AvitoMessageDto }
+                const parsed = JSON.parse(currentData) as {
+                  leadId?: string
+                  message?: AvitoMessageDto
+                  createdLead?: boolean
+                }
                 if (parsed.leadId && parsed.message) {
                   onMessage({
                     leadId: parsed.leadId,
                     message: mapMessage(parsed.message),
+                    createdLead: Boolean(parsed.createdLead),
                   })
                 }
               } catch {
