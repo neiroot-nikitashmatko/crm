@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SearchOutline, ArrowForwardOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
-import { fetchAvitoChats, subscribeAvitoMessages, AvitoChatApiError } from '@/api/avitoChat'
+import { fetchAvitoChats, prefetchAvitoLeadChat, subscribeAvitoMessages, AvitoChatApiError } from '@/api/avitoChat'
 import type { AvitoChatListItem } from '@/types/avitoChat'
 import LeadAvitoChatPanel from '@/components/leads/LeadAvitoChatPanel.vue'
 
@@ -111,6 +111,10 @@ function selectChat(chat: AvitoChatListItem) {
   void router.replace({ name: 'chats', query: { leadId: chat.leadId } })
 }
 
+function prefetchChat(chat: AvitoChatListItem) {
+  prefetchAvitoLeadChat(chat.leadId)
+}
+
 function startMessageStream() {
   if (messagesAbort) {
     messagesAbort.abort()
@@ -204,6 +208,7 @@ onBeforeUnmount(() => {
               role="option"
               :aria-selected="selectedLeadId === chat.leadId"
               @click="selectChat(chat)"
+              @pointerenter="prefetchChat(chat)"
             >
               <span class="chats-workspace__avatar" aria-hidden="true">
                 <img

@@ -162,10 +162,51 @@ async function avitoRequestJson<T>(path: string, init?: RequestInit): Promise<T>
   }
 }
 
-export async function fetchAvitoLeadChat(leadId: string): Promise<AvitoLeadChatBundle> {
+const leadChatCache = new Map<string, AvitoLeadChatBundle>()
+const leadChatInflight = new Map<string, Promise<AvitoLeadChatBundle>>()
+
+function cloneChatBundle(bundle: AvitoLeadChatBundle): AvitoLeadChatBundle {
+  return {
+    linked: bundle.linked,
+    participant: { ...bundle.participant },
+    messages: bundle.messages.map((item) => ({ ...item })),
+  }
+}
+
+export function getCachedAvitoLeadChat(leadId: string): AvitoLeadChatBundle | null {
+  const cached = leadChatCache.get(leadId.trim())
+  return cached ? cloneChatBundle(cached) : null
+}
+
+export function setCachedAvitoLeadChat(leadId: string, bundle: AvitoLeadChatBundle): void {
+  const id = leadId.trim()
+  if (!id) return
+  leadChatCache.set(id, cloneChatBundle(bundle))
+}
+
+export function patchCachedAvitoLeadChatMessage(leadId: string, message: LeadChatMessage): void {
+  const id = leadId.trim()
+  const cached = leadChatCache.get(id)
+  if (!cached) return
+  const index = cached.messages.findIndex((item) => item.id === message.id)
+  const nextMessages =
+    index === -1
+      ? [...cached.messages, message].sort((a, b) => a.createdAt - b.createdAt)
+      : cached.messages.map((item, i) => (i === index ? message : item))
+  leadChatCache.set(id, {
+    ...cached,
+    linked: true,
+    messages: nextMessages,
+  })
+}
+
+async function loadAvitoLeadChat(leadId: string): Promise<AvitoLeadChatBundle> {
   if (isAvitoChatsMockEnabled() && isMockAvitoLeadId(leadId)) {
     const mock = getMockAvitoLeadChat(leadId)
-    if (mock) return mock
+    if (mock) {
+      setCachedAvitoLeadChat(leadId, mock)
+      return cloneChatBundle(mock)
+    }
   }
 
   const payload = await avitoRequestJson<AvitoLeadChatBundleResponse>(
@@ -176,11 +217,42 @@ export async function fetchAvitoLeadChat(leadId: string): Promise<AvitoLeadChatB
   const nickname = payload.chat?.peerNickname?.trim() || 'Пользователь Авито'
   const avatarUrl = payload.chat?.peerAvatarUrl?.trim() || null
 
-  return {
+  const bundle: AvitoLeadChatBundle = {
     linked: Boolean(payload.linked),
     participant: { nickname, avatarUrl },
     messages: (payload.messages ?? []).map(mapMessage),
   }
+  setCachedAvitoLeadChat(leadId, bundle)
+  return cloneChatBundle(bundle)
+}
+
+export async function fetchAvitoLeadChat(leadId: string): Promise<AvitoLeadChatBundle> {
+  const id = leadId.trim()
+  if (!id) {
+    return {
+      linked: false,
+      participant: { nickname: 'Пользователь Авито', avatarUrl: null },
+      messages: [],
+    }
+  }
+
+  const inflight = leadChatInflight.get(id)
+  if (inflight) return cloneChatBundle(await inflight)
+
+  const request = loadAvitoLeadChat(id).finally(() => {
+    leadChatInflight.delete(id)
+  })
+  leadChatInflight.set(id, request)
+  return request
+}
+
+/** Warm cache in background (e.g. on chat list hover). */
+export function prefetchAvitoLeadChat(leadId: string): void {
+  const id = leadId.trim()
+  if (!id || leadChatCache.has(id) || leadChatInflight.has(id)) return
+  void fetchAvitoLeadChat(id).catch(() => {
+    // ignore prefetch errors
+  })
 }
 
 export async function sendAvitoLeadMessage(

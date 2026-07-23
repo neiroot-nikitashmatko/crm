@@ -8,7 +8,10 @@ import {
 import { NIcon } from 'naive-ui'
 import {
   fetchAvitoLeadChat,
+  getCachedAvitoLeadChat,
+  patchCachedAvitoLeadChatMessage,
   sendAvitoLeadMessage,
+  setCachedAvitoLeadChat,
   subscribeAvitoMessages,
 } from '@/api/avitoChat'
 import { useNotificationBadges } from '@/composables/useNotificationBadges'
@@ -44,6 +47,7 @@ const pendingFiles = ref<File[]>([])
 const showQuickReplies = ref(false)
 
 let sseAbort: AbortController | null = null
+let loadRequestId = 0
 
 const avatarLetter = computed(() => {
   const name = participant.value.nickname.trim()
@@ -65,6 +69,16 @@ const emptyText = computed(() => {
   }
   return 'Сообщений пока нет. Когда клиент напишет в Авито, переписка появится здесь.'
 })
+
+function applyBundle(bundle: {
+  linked: boolean
+  participant: LeadChatParticipant
+  messages: LeadChatMessage[]
+}) {
+  linked.value = bundle.linked
+  participant.value = bundle.participant
+  messages.value = bundle.messages
+}
 
 async function scrollToBottom() {
   await nextTick()
@@ -102,34 +116,51 @@ function upsertMessage(message: LeadChatMessage) {
   const index = messages.value.findIndex((item) => item.id === message.id)
   if (index === -1) {
     messages.value = [...messages.value, message].sort((a, b) => a.createdAt - b.createdAt)
-    return
+  } else {
+    const next = [...messages.value]
+    next[index] = message
+    messages.value = next
   }
-  const next = [...messages.value]
-  next[index] = message
-  messages.value = next
+  patchCachedAvitoLeadChatMessage(props.leadId, message)
 }
 
 async function loadChat() {
   const leadId = props.leadId.trim()
   if (!leadId) return
 
-  loading.value = true
+  const requestId = ++loadRequestId
   loadError.value = ''
+
+  const cached = getCachedAvitoLeadChat(leadId)
+  if (cached) {
+    applyBundle(cached)
+    loading.value = false
+    void scrollToBottom()
+  } else {
+    loading.value = true
+    messages.value = []
+  }
+
   try {
     const bundle = await fetchAvitoLeadChat(leadId)
-    linked.value = bundle.linked
-    participant.value = bundle.participant
-    messages.value = bundle.messages
+    if (requestId !== loadRequestId || props.leadId.trim() !== leadId) return
+    applyBundle(bundle)
+    setCachedAvitoLeadChat(leadId, bundle)
     if (bundle.linked) {
       void markAvitoChatRead(leadId)
     }
   } catch (error) {
-    linked.value = false
-    messages.value = []
+    if (requestId !== loadRequestId || props.leadId.trim() !== leadId) return
+    if (!cached) {
+      linked.value = false
+      messages.value = []
+    }
     loadError.value = error instanceof Error ? error.message : 'Не удалось загрузить чат'
   } finally {
-    loading.value = false
-    void scrollToBottom()
+    if (requestId === loadRequestId) {
+      loading.value = false
+      void scrollToBottom()
+    }
   }
 }
 
@@ -292,7 +323,19 @@ onBeforeUnmount(() => {
     </header>
 
     <div ref="messagesViewportRef" class="lead-avito-chat__messages" role="log" aria-live="polite">
-      <p v-if="messages.length === 0" class="lead-avito-chat__empty">
+      <div v-if="loading && messages.length === 0" class="lead-avito-chat__skeleton" aria-hidden="true">
+        <div class="lead-avito-chat__skeleton-row">
+          <div class="lead-avito-chat__skeleton-bubble lead-avito-chat__skeleton-bubble--short" />
+        </div>
+        <div class="lead-avito-chat__skeleton-row lead-avito-chat__skeleton-row--outgoing">
+          <div class="lead-avito-chat__skeleton-bubble" />
+        </div>
+        <div class="lead-avito-chat__skeleton-row">
+          <div class="lead-avito-chat__skeleton-bubble lead-avito-chat__skeleton-bubble--medium" />
+        </div>
+      </div>
+
+      <p v-else-if="messages.length === 0" class="lead-avito-chat__empty">
         {{ emptyText }}
       </p>
 
@@ -503,6 +546,50 @@ onBeforeUnmount(() => {
   font-size: 13px;
   color: #64748b;
   max-width: 280px;
+}
+
+.lead-avito-chat__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.lead-avito-chat__skeleton-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.lead-avito-chat__skeleton-row--outgoing {
+  justify-content: flex-end;
+}
+
+.lead-avito-chat__skeleton-bubble {
+  width: min(58%, 220px);
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #e8eef5 0%, #f5f8fb 50%, #e8eef5 100%);
+  background-size: 200% 100%;
+  animation: lead-avito-chat-skeleton 1.2s ease-in-out infinite;
+}
+
+.lead-avito-chat__skeleton-bubble--short {
+  width: min(42%, 150px);
+  height: 34px;
+}
+
+.lead-avito-chat__skeleton-bubble--medium {
+  width: min(50%, 180px);
+  height: 38px;
+}
+
+@keyframes lead-avito-chat-skeleton {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .lead-avito-chat__bubble-row {

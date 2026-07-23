@@ -209,6 +209,7 @@ RETURNING
 }
 
 func (r *AvitoChatRepository) ListMessagesByChatID(ctx context.Context, chatID string) ([]model.AvitoMessage, error) {
+	// Newest 200 messages — enough for UI, keeps open payload small/fast.
 	query := `
 SELECT
   id::text,
@@ -220,8 +221,22 @@ SELECT
   author_id,
   sent_at,
   created_at
-FROM avito_messages
-WHERE chat_id = $1
+FROM (
+  SELECT
+    id,
+    chat_id,
+    message_id,
+    direction,
+    message_type,
+    text,
+    author_id,
+    sent_at,
+    created_at
+  FROM avito_messages
+  WHERE chat_id = $1
+  ORDER BY sent_at DESC, created_at DESC
+  LIMIT 200
+) recent
 ORDER BY sent_at ASC, created_at ASC
 `
 	rows, err := r.db.Query(ctx, query, strings.TrimSpace(chatID))
