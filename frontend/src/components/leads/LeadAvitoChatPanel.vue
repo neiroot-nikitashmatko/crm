@@ -508,6 +508,8 @@ onBeforeUnmount(() => {
 .lead-avito-chat__bubble-row {
   display: flex;
   justify-content: flex-start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .lead-avito-chat__bubble-row--outgoing {
@@ -516,11 +518,14 @@ onBeforeUnmount(() => {
 
 .lead-avito-chat__bubble {
   max-width: min(80%, 420px);
+  min-width: 0;
   padding: 8px 10px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .lead-avito-chat__bubble--incoming {
@@ -551,7 +556,7 @@ onBeforeUnmount(() => {
 
 .lead-avito-chat__bubble-image {
   display: block;
-  max-width: min(260px, 70vw);
+  max-width: 100%;
   max-height: 220px;
   width: auto;
   height: auto;

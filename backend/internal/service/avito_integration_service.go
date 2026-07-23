@@ -119,18 +119,28 @@ func (s *AvitoIntegrationService) GetLeadChatBundle(ctx context.Context, leadID 
 		return AvitoLeadChatBundle{}, err
 	}
 
-	if s.Enabled() {
-		if _, syncErr := s.SyncChatMessages(ctx, chat.ChatID); syncErr != nil {
-			s.logDebug("sync messages for lead %s failed: %v", leadID, syncErr)
-		}
-	}
-
 	messages, listErr := s.avitoRepo.ListMessagesByChatID(ctx, chat.ChatID)
 	if listErr != nil {
 		return AvitoLeadChatBundle{}, listErr
 	}
 	if messages == nil {
 		messages = []model.AvitoMessage{}
+	}
+
+	// Don't block chat open on Avito API. Webhooks keep history up to date.
+	// Pull from Avito only when local history is empty (first open / missed sync).
+	if s.Enabled() && len(messages) == 0 {
+		if _, syncErr := s.SyncChatMessages(ctx, chat.ChatID); syncErr != nil {
+			s.logDebug("sync messages for lead %s failed: %v", leadID, syncErr)
+		} else {
+			messages, listErr = s.avitoRepo.ListMessagesByChatID(ctx, chat.ChatID)
+			if listErr != nil {
+				return AvitoLeadChatBundle{}, listErr
+			}
+			if messages == nil {
+				messages = []model.AvitoMessage{}
+			}
+		}
 	}
 
 	return AvitoLeadChatBundle{
@@ -272,7 +282,7 @@ func (s *AvitoIntegrationService) SyncChatMessages(ctx context.Context, chatID s
 		return 0, fmt.Errorf("avito integration is not configured")
 	}
 
-	response, err := s.client.GetMessages(ctx, chatID, 100, 0)
+	response, err := s.client.GetMessages(ctx, chatID, 50, 0)
 	if err != nil {
 		return 0, err
 	}

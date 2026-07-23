@@ -301,20 +301,24 @@ onBeforeUnmount(() => {
 .chats-workspace__sidebar {
   display: flex;
   flex-direction: column;
-  width: min(340px, 38%);
-  min-width: 260px;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
   border-right: 1px solid #e2e8f0;
   background: #f8fafc;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chats-workspace__conversation {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .chats-workspace__conversation > .chats-workspace__pane-header {
@@ -478,6 +482,7 @@ onBeforeUnmount(() => {
 .chats-workspace__list-body,
 .chats-workspace__conversation-body {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
