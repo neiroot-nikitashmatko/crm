@@ -78,6 +78,8 @@ func (h *EventsHandler) AvitoMessageStream(w http.ResponseWriter, r *http.Reques
 
 	ch, unsubscribe := h.events.SubscribeAvitoMessage()
 	defer unsubscribe()
+	readCh, unsubscribeRead := h.events.SubscribeAvitoChatRead()
+	defer unsubscribeRead()
 
 	fmt.Fprintf(w, "event: ready\ndata: {\"ok\":true}\n\n")
 	flusher.Flush()
@@ -95,6 +97,10 @@ func (h *EventsHandler) AvitoMessageStream(w http.ResponseWriter, r *http.Reques
 		case event := <-ch:
 			payload, _ := json.Marshal(event)
 			fmt.Fprintf(w, "event: avito-message\ndata: %s\n\n", payload)
+			flusher.Flush()
+		case event := <-readCh:
+			payload, _ := json.Marshal(event)
+			fmt.Fprintf(w, "event: avito-chat-read\ndata: %s\n\n", payload)
 			flusher.Flush()
 		}
 	}

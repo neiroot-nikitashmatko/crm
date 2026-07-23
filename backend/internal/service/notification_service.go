@@ -14,15 +14,17 @@ type NotificationSummary struct {
 }
 
 type NotificationService struct {
-	leads *repository.LeadRepository
-	avito *repository.AvitoChatRepository
+	leads  *repository.LeadRepository
+	avito  *repository.AvitoChatRepository
+	events *EventBus
 }
 
 func NewNotificationService(
 	leads *repository.LeadRepository,
 	avito *repository.AvitoChatRepository,
+	events *EventBus,
 ) *NotificationService {
-	return &NotificationService{leads: leads, avito: avito}
+	return &NotificationService{leads: leads, avito: avito, events: events}
 }
 
 func (s *NotificationService) Summary(ctx context.Context, userID string) (NotificationSummary, error) {
@@ -35,7 +37,7 @@ func (s *NotificationService) Summary(ctx context.Context, userID string) (Notif
 	if err != nil {
 		return NotificationSummary{}, err
 	}
-	unreadChats, err := s.avito.CountUnreadChatsForUser(ctx, userID)
+	unreadChats, err := s.avito.CountUnreadChats(ctx)
 	if err != nil {
 		return NotificationSummary{}, err
 	}
@@ -46,14 +48,16 @@ func (s *NotificationService) Summary(ctx context.Context, userID string) (Notif
 	}, nil
 }
 
-func (s *NotificationService) MarkAvitoChatRead(ctx context.Context, userID string, leadID string) error {
-	userID = strings.TrimSpace(userID)
+func (s *NotificationService) MarkAvitoChatRead(ctx context.Context, leadID string) error {
 	leadID = strings.TrimSpace(leadID)
-	if userID == "" {
-		return errors.New("userId is required")
-	}
 	if leadID == "" {
 		return errors.New("leadId is required")
 	}
-	return s.avito.MarkChatReadByLeadID(ctx, userID, leadID)
+	if err := s.avito.MarkChatReadByLeadID(ctx, leadID); err != nil {
+		return err
+	}
+	if s.events != nil {
+		s.events.PublishAvitoChatRead(AvitoChatReadEvent{LeadID: leadID})
+	}
+	return nil
 }

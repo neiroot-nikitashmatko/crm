@@ -326,9 +326,11 @@ export type AvitoMessageSSEHandler = (payload: {
   createdLead: boolean
 }) => void
 
+export type AvitoChatReadSSEHandler = (payload: { leadId: string }) => void
+
 export function subscribeAvitoMessages(
   onMessage: AvitoMessageSSEHandler,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; onChatRead?: AvitoChatReadSSEHandler },
 ): void {
   const token = getAuthToken()
   if (!token) return
@@ -373,6 +375,16 @@ export function subscribeAvitoMessages(
                     message: mapMessage(parsed.message),
                     createdLead: Boolean(parsed.createdLead),
                   })
+                }
+              } catch {
+                // ignore malformed payload
+              }
+            } else if (currentEvent === 'avito-chat-read' && currentData.trim() !== '') {
+              try {
+                const parsed = JSON.parse(currentData) as { leadId?: string }
+                const leadId = parsed.leadId?.trim()
+                if (leadId) {
+                  options?.onChatRead?.({ leadId })
                 }
               } catch {
                 // ignore malformed payload

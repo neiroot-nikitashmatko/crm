@@ -167,7 +167,12 @@ function startMessageEventsStream(): void {
         preview: message.kind === 'image' ? '[Изображение]' : message.text,
       })
     },
-    { signal: controller.signal },
+    {
+      signal: controller.signal,
+      onChatRead: () => {
+        scheduleRefresh()
+      },
+    },
   )
 }
 

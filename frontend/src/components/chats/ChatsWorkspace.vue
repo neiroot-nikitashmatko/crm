@@ -138,7 +138,12 @@ function startMessageStream() {
         }
       })
     },
-    { signal: controller.signal },
+    {
+      signal: controller.signal,
+      onChatRead: ({ leadId }) => {
+        clearUnreadLocally(leadId)
+      },
+    },
   )
 }
 

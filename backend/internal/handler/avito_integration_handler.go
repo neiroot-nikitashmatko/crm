@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"proclients/backend/internal/auth"
 	"proclients/backend/internal/avito"
 	"proclients/backend/internal/service"
 )
@@ -100,7 +99,7 @@ func (h *AvitoIntegrationHandler) ChatsCollection(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	items, err := h.service.ListChats(r.Context(), auth.UserIDFromContext(r.Context()))
+	items, err := h.service.ListChats(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -140,7 +139,7 @@ func (h *AvitoIntegrationHandler) LeadChat(w http.ResponseWriter, r *http.Reques
 			writeError(w, http.StatusInternalServerError, "notifications service is not configured")
 			return
 		}
-		if err := h.notifications.MarkAvitoChatRead(r.Context(), auth.UserIDFromContext(r.Context()), leadID); err != nil {
+		if err := h.notifications.MarkAvitoChatRead(r.Context(), leadID); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

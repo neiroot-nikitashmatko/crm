@@ -16,16 +16,22 @@ type AvitoMessageEvent struct {
 	CreatedLead bool               `json:"createdLead,omitempty"`
 }
 
+type AvitoChatReadEvent struct {
+	LeadID string `json:"leadId"`
+}
+
 type EventBus struct {
 	mu               sync.Mutex
 	leadCreatedSubs  map[chan LeadCreatedEvent]struct{}
 	avitoMessageSubs map[chan AvitoMessageEvent]struct{}
+	avitoChatReadSubs map[chan AvitoChatReadEvent]struct{}
 }
 
 func NewEventBus() *EventBus {
 	return &EventBus{
-		leadCreatedSubs:  make(map[chan LeadCreatedEvent]struct{}),
-		avitoMessageSubs: make(map[chan AvitoMessageEvent]struct{}),
+		leadCreatedSubs:   make(map[chan LeadCreatedEvent]struct{}),
+		avitoMessageSubs:  make(map[chan AvitoMessageEvent]struct{}),
+		avitoChatReadSubs: make(map[chan AvitoChatReadEvent]struct{}),
 	}
 }
 
@@ -82,6 +88,38 @@ func (b *EventBus) PublishAvitoMessage(event AvitoMessageEvent) {
 	b.mu.Lock()
 	subs := make([]chan AvitoMessageEvent, 0, len(b.avitoMessageSubs))
 	for ch := range b.avitoMessageSubs {
+		subs = append(subs, ch)
+	}
+	b.mu.Unlock()
+
+	for _, ch := range subs {
+		select {
+		case ch <- event:
+		default:
+		}
+	}
+}
+
+func (b *EventBus) SubscribeAvitoChatRead() (ch chan AvitoChatReadEvent, unsubscribe func()) {
+	ch = make(chan AvitoChatReadEvent, 16)
+	b.mu.Lock()
+	b.avitoChatReadSubs[ch] = struct{}{}
+	b.mu.Unlock()
+
+	return ch, func() {
+		b.mu.Lock()
+		if _, ok := b.avitoChatReadSubs[ch]; ok {
+			delete(b.avitoChatReadSubs, ch)
+			close(ch)
+		}
+		b.mu.Unlock()
+	}
+}
+
+func (b *EventBus) PublishAvitoChatRead(event AvitoChatReadEvent) {
+	b.mu.Lock()
+	subs := make([]chan AvitoChatReadEvent, 0, len(b.avitoChatReadSubs))
+	for ch := range b.avitoChatReadSubs {
 		subs = append(subs, ch)
 	}
 	b.mu.Unlock()

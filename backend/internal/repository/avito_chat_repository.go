@@ -107,7 +107,7 @@ LIMIT 1
 	return chat, err
 }
 
-func (r *AvitoChatRepository) ListChats(ctx context.Context, userID string) ([]model.AvitoChat, error) {
+func (r *AvitoChatRepository) ListChats(ctx context.Context) ([]model.AvitoChat, error) {
 	query := `
 SELECT
   c.id::text,
@@ -129,8 +129,7 @@ SELECT
         (
           SELECT r.last_read_at
           FROM avito_chat_reads r
-          WHERE r.user_id = $1::uuid
-            AND r.chat_id = c.chat_id
+          WHERE r.chat_id = c.chat_id
         ),
         TIMESTAMPTZ 'epoch'
       )
@@ -141,7 +140,7 @@ INNER JOIN leads l ON l.id = c.lead_id
   AND l.column_id <> 'failed'
 ORDER BY c.updated_at DESC, c.created_at DESC
 `
-	rows, err := r.db.Query(ctx, query, strings.TrimSpace(userID))
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +306,7 @@ func scanAvitoMessage(row scannable) (model.AvitoMessage, error) {
 	return msg, nil
 }
 
-func (r *AvitoChatRepository) CountUnreadChatsForUser(ctx context.Context, userID string) (int, error) {
+func (r *AvitoChatRepository) CountUnreadChats(ctx context.Context) (int, error) {
 	const query = `
 SELECT COUNT(*)::int
 FROM avito_chats c
@@ -323,29 +322,28 @@ WHERE EXISTS (
       (
         SELECT r.last_read_at
         FROM avito_chat_reads r
-        WHERE r.user_id = $1::uuid
-          AND r.chat_id = c.chat_id
+        WHERE r.chat_id = c.chat_id
       ),
       TIMESTAMPTZ 'epoch'
     )
 )
 `
 	var count int
-	if err := r.db.QueryRow(ctx, query, strings.TrimSpace(userID)).Scan(&count); err != nil {
+	if err := r.db.QueryRow(ctx, query).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-func (r *AvitoChatRepository) MarkChatReadByLeadID(ctx context.Context, userID string, leadID string) error {
+func (r *AvitoChatRepository) MarkChatReadByLeadID(ctx context.Context, leadID string) error {
 	const query = `
-INSERT INTO avito_chat_reads (user_id, chat_id, last_read_at)
-SELECT $1::uuid, c.chat_id, now()
+INSERT INTO avito_chat_reads (chat_id, last_read_at)
+SELECT c.chat_id, now()
 FROM avito_chats c
-WHERE c.lead_id = $2::uuid
-ON CONFLICT (user_id, chat_id) DO UPDATE
+WHERE c.lead_id = $1::uuid
+ON CONFLICT (chat_id) DO UPDATE
 SET last_read_at = EXCLUDED.last_read_at
 `
-	_, err := r.db.Exec(ctx, query, strings.TrimSpace(userID), strings.TrimSpace(leadID))
+	_, err := r.db.Exec(ctx, query, strings.TrimSpace(leadID))
 	return err
 }

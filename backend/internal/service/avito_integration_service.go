@@ -94,8 +94,8 @@ func (s *AvitoIntegrationService) GetChatForLead(ctx context.Context, leadID str
 	return chat, nil
 }
 
-func (s *AvitoIntegrationService) ListChats(ctx context.Context, userID string) ([]model.AvitoChat, error) {
-	items, err := s.avitoRepo.ListChats(ctx, userID)
+func (s *AvitoIntegrationService) ListChats(ctx context.Context) ([]model.AvitoChat, error) {
+	items, err := s.avitoRepo.ListChats(ctx)
 	if err != nil {
 		return nil, err
 	}

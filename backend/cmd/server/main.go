@@ -89,7 +89,7 @@ func main() {
 		log.Printf("avito integration disabled (missing AVITO_* env)")
 	}
 
-	notificationService := service.NewNotificationService(leadRepo, avitoChatRepo)
+	notificationService := service.NewNotificationService(leadRepo, avitoChatRepo, eventsBus)
 
 	authHandler := handler.NewAuthHandler(authService, jwtManager)
 	leadHandler := handler.NewLeadHandler(leadService, attachmentService)
