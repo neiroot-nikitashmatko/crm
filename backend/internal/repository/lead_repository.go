@@ -148,7 +148,7 @@ WHERE id = $1::uuid AND deleted_at IS NULL
 	return r.GetByID(ctx, leadID)
 }
 
-func (r *LeadRepository) UpdateProfile(ctx context.Context, leadID string, firstName string, patronymic string) (model.Lead, error) {
+func (r *LeadRepository) UpdateProfile(ctx context.Context, leadID string, firstName string, patronymic string, phone string) (model.Lead, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return model.Lead{}, err
@@ -159,9 +159,10 @@ func (r *LeadRepository) UpdateProfile(ctx context.Context, leadID string, first
 UPDATE leads
 SET first_name = $2,
     patronymic = $3,
+    phone = $4,
     updated_at = now()
 WHERE id = $1::uuid AND deleted_at IS NULL
-`, leadID, firstName, patronymic)
+`, leadID, firstName, patronymic, phone)
 	if err != nil {
 		return model.Lead{}, err
 	}
@@ -173,9 +174,10 @@ WHERE id = $1::uuid AND deleted_at IS NULL
 UPDATE deals
 SET first_name = $2,
     patronymic = $3,
+    phone = $4,
     updated_at = now()
 WHERE lead_id = $1::uuid AND deleted_at IS NULL
-`, leadID, firstName, patronymic)
+`, leadID, firstName, patronymic, phone)
 	if err != nil {
 		return model.Lead{}, err
 	}

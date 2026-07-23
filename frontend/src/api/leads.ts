@@ -73,10 +73,11 @@ export async function updateLeadProfile(
   leadId: string,
   firstName: string,
   patronymic: string,
+  phone: string,
 ): Promise<Lead> {
   const response = await leadsRequestJson<LeadItemResponse>(`/api/v1/leads/${leadId}/profile`, {
     method: 'PATCH',
-    body: JSON.stringify({ firstName, patronymic }),
+    body: JSON.stringify({ firstName, patronymic, phone }),
   })
   return response.item
 }

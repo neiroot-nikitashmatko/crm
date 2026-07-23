@@ -126,12 +126,13 @@ func (h *LeadHandler) Item(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			FirstName  string `json:"firstName"`
 			Patronymic string `json:"patronymic"`
+			Phone      string `json:"phone"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
-		item, err := h.service.UpdateProfile(r.Context(), leadID, req.FirstName, req.Patronymic)
+		item, err := h.service.UpdateProfile(r.Context(), leadID, req.FirstName, req.Patronymic, req.Phone)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return

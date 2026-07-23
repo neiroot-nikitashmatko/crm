@@ -20,6 +20,7 @@ import type { Lead, LeadProduction, NewLeadForm } from '@/types/lead'
 import type { Task } from '@/types/task'
 import type { PickupDelivery } from '@/types/deal'
 import type { LeadKanbanColumn } from '@/constants/leads'
+import { isPhoneFilled, normalizePhone } from '@/utils/phone'
 import {
   DELIVERY_SECTION_LOCKED_MESSAGE,
   isDeliverySectionLocked,
@@ -155,7 +156,9 @@ const visibleLeadDetailsSections = computed(() =>
 )
 const canConfirmFailureReason = computed(() => failureReasonDraft.value.trim().length > 0)
 const leadCommentDrafts = reactive<Record<string, string>>({})
-const leadProfileDrafts = reactive<Record<string, { firstName: string; patronymic: string }>>({})
+const leadProfileDrafts = reactive<
+  Record<string, { firstName: string; patronymic: string; phone: string }>
+>({})
 const currentLeadComment = computed({
   get: () => {
     if (!selectedLead.value) return ''
@@ -176,6 +179,7 @@ const currentLeadFirstName = computed({
     const current = leadProfileDrafts[selectedLead.value.id] ?? {
       firstName: selectedLead.value.firstName ?? '',
       patronymic: selectedLead.value.patronymic ?? '',
+      phone: selectedLead.value.phone ?? '',
     }
     leadProfileDrafts[selectedLead.value.id] = { ...current, firstName: value }
   },
@@ -190,8 +194,24 @@ const currentLeadPatronymic = computed({
     const current = leadProfileDrafts[selectedLead.value.id] ?? {
       firstName: selectedLead.value.firstName ?? '',
       patronymic: selectedLead.value.patronymic ?? '',
+      phone: selectedLead.value.phone ?? '',
     }
     leadProfileDrafts[selectedLead.value.id] = { ...current, patronymic: value }
+  },
+})
+const currentLeadPhone = computed({
+  get: () => {
+    if (!selectedLead.value) return ''
+    return leadProfileDrafts[selectedLead.value.id]?.phone ?? selectedLead.value.phone ?? ''
+  },
+  set: (value: string) => {
+    if (!selectedLead.value) return
+    const current = leadProfileDrafts[selectedLead.value.id] ?? {
+      firstName: selectedLead.value.firstName ?? '',
+      patronymic: selectedLead.value.patronymic ?? '',
+      phone: selectedLead.value.phone ?? '',
+    }
+    leadProfileDrafts[selectedLead.value.id] = { ...current, phone: value }
   },
 })
 const currentLeadProduction = computed<LeadProduction>(() => {
@@ -721,6 +741,19 @@ async function handleCreateDealClick() {
   const leadId = selectedLead.value.id
 
   try {
+    await persistLeadProfile()
+    if (!selectedLead.value || selectedLead.value.id !== leadId) {
+      return
+    }
+
+    const phone = (selectedLead.value.phone ?? '').trim()
+    if (!isPhoneFilled(phone)) {
+      window.alert(
+        'Чтобы создать сделку, укажите телефон клиента в карточке лида (например +79001234567).',
+      )
+      return
+    }
+
     await flushPersistLeadPickupDelivery()
     await flushPersistLeadProducts()
     await flushPersistLeadProduction()
@@ -743,6 +776,7 @@ async function handleCreateDealClick() {
     await router.push({ name: 'deals', query: { dealId: createdDeal.id } })
   } catch (error) {
     console.error('Не удалось создать сделку из лида', error)
+    window.alert(error instanceof Error ? error.message : 'Не удалось создать сделку из лида')
   }
 }
 
@@ -1030,13 +1064,21 @@ function syncLeadProfileDraft(lead: Lead) {
   leadProfileDrafts[lead.id] = {
     firstName: lead.firstName ?? '',
     patronymic: lead.patronymic ?? '',
+    phone: lead.phone ?? '',
   }
 }
 
-function syncLinkedDealsProfile(leadId: string, firstName: string, patronymic: string) {
+function syncLinkedDealsProfile(leadId: string, firstName: string, patronymic: string, phone: string) {
   deals.value = deals.value.map((deal) =>
-    deal.leadId === leadId ? { ...deal, firstName, patronymic } : deal,
+    deal.leadId === leadId ? { ...deal, firstName, patronymic, phone } : deal,
   )
+}
+
+function onLeadPhoneInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  const normalized = normalizePhone(input.value)
+  currentLeadPhone.value = normalized
+  input.value = normalized
 }
 
 async function persistLeadProfile() {
@@ -1045,30 +1087,46 @@ async function persistLeadProfile() {
   const draft = leadProfileDrafts[selectedLead.value.id] ?? {
     firstName: selectedLead.value.firstName ?? '',
     patronymic: selectedLead.value.patronymic ?? '',
+    phone: selectedLead.value.phone ?? '',
   }
   const firstName = draft.firstName.trim()
   const patronymic = draft.patronymic.trim()
+  let phone = draft.phone.trim()
 
   if (!firstName) {
     syncLeadProfileDraft(selectedLead.value)
     return
   }
 
+  // Неполный номер (например только +7) сохраняем как пустой.
+  if (!isPhoneFilled(phone)) {
+    if (phone === '' || phone === '+7') {
+      phone = ''
+      currentLeadPhone.value = ''
+    } else {
+      window.alert('Некорректный формат телефона. Укажите номер полностью, например +79001234567.')
+      syncLeadProfileDraft(selectedLead.value)
+      return
+    }
+  }
+
   if (
     firstName === (selectedLead.value.firstName ?? '').trim() &&
-    patronymic === (selectedLead.value.patronymic ?? '').trim()
+    patronymic === (selectedLead.value.patronymic ?? '').trim() &&
+    phone === (selectedLead.value.phone ?? '').trim()
   ) {
     return
   }
 
   try {
-    const updated = await updateLeadProfile(selectedLead.value.id, firstName, patronymic)
+    const updated = await updateLeadProfile(selectedLead.value.id, firstName, patronymic, phone)
     if (updated) {
       syncLeadProfileDraft(updated)
-      syncLinkedDealsProfile(updated.id, updated.firstName, updated.patronymic)
+      syncLinkedDealsProfile(updated.id, updated.firstName, updated.patronymic, updated.phone)
     }
   } catch (error) {
-    console.error('Не удалось сохранить имя/отчество лида', error)
+    console.error('Не удалось сохранить профиль лида', error)
+    window.alert(error instanceof Error ? error.message : 'Не удалось сохранить профиль лида')
     syncLeadProfileDraft(selectedLead.value)
   }
 }
@@ -1266,7 +1324,14 @@ async function removeLeadAttachmentFile(attachmentId: string) {
                 <div class="lead-details-sheet__info-row">
                   <dt>Телефон</dt>
                   <dd>
-                    <span class="lead-details-sheet__value">{{ selectedLead.phone || '—' }}</span>
+                    <input
+                      :value="currentLeadPhone"
+                      type="tel"
+                      class="lead-details-sheet__input lead-details-sheet__input--inline"
+                      placeholder="+79001234567"
+                      @input="onLeadPhoneInput"
+                      @blur="persistLeadProfile"
+                    />
                   </dd>
                 </div>
                 <div class="lead-details-sheet__info-row">

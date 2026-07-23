@@ -153,11 +153,16 @@ export function useLeads() {
     applyLeadUpdate(lead, updatedLead)
   }
 
-  async function updateLeadProfile(leadId: string, firstName: string, patronymic: string) {
+  async function updateLeadProfile(
+    leadId: string,
+    firstName: string,
+    patronymic: string,
+    phone: string,
+  ) {
     const lead = leads.value.find((item) => item.id === leadId)
-    if (!lead) return normalizeLead(await patchLeadProfile(leadId, firstName, patronymic))
+    if (!lead) return normalizeLead(await patchLeadProfile(leadId, firstName, patronymic, phone))
 
-    const updatedLead = normalizeLead(await patchLeadProfile(leadId, firstName, patronymic))
+    const updatedLead = normalizeLead(await patchLeadProfile(leadId, firstName, patronymic, phone))
     applyLeadUpdate(lead, updatedLead)
     return updatedLead
   }

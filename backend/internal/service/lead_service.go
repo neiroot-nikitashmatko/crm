@@ -3,11 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"proclients/backend/internal/model"
 	"proclients/backend/internal/repository"
 )
+
+var leadPhonePattern = regexp.MustCompile(`^\+[1-9][0-9]{10,14}$`)
 
 type LeadService struct {
 	repo        *repository.LeadRepository
@@ -77,13 +80,23 @@ func (s *LeadService) UpdateComment(ctx context.Context, leadID string, comment 
 	return s.enrichLead(ctx, lead)
 }
 
-func (s *LeadService) UpdateProfile(ctx context.Context, leadID string, firstName string, patronymic string) (model.Lead, error) {
+func (s *LeadService) UpdateProfile(
+	ctx context.Context,
+	leadID string,
+	firstName string,
+	patronymic string,
+	phone string,
+) (model.Lead, error) {
 	firstName = strings.TrimSpace(firstName)
 	patronymic = strings.TrimSpace(patronymic)
+	phone = strings.TrimSpace(phone)
 	if firstName == "" {
 		return model.Lead{}, errors.New("имя обязательно")
 	}
-	lead, err := s.repo.UpdateProfile(ctx, leadID, firstName, patronymic)
+	if phone != "" && !leadPhonePattern.MatchString(phone) {
+		return model.Lead{}, errors.New("Некорректный формат телефона. Укажите номер полностью, например +79001234567.")
+	}
+	lead, err := s.repo.UpdateProfile(ctx, leadID, firstName, patronymic, phone)
 	if err != nil {
 		return model.Lead{}, err
 	}
