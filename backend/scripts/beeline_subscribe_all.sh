@@ -63,9 +63,10 @@ EOF
 
 subscribe_number "9613001616" "Знал о производстве"
 subscribe_number "9613015050" "Знал о производстве"
+subscribe_number "9613001441" "Авито (AutoFactory)"
 subscribe_number "9662066959" "Визитка(авточехлы)"
 subscribe_number "9613195219" "Авито (Автоатрибут)"
-subscribe_number "9064545834" "Авито (AutoFactory)"
+subscribe_number "9064545834" "Авито (Автоателье)"
 subscribe_number "9064545866" "Авито (Автоателье)"
 subscribe_number "9034306767" "Яндекс карты"
 subscribe_number "9034363336" "Instagram"
