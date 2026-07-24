@@ -86,7 +86,7 @@ const TIME_PICKER_PROPS = {
 
 const router = useRouter()
 const route = useRoute()
-const { logout } = useAuth()
+const { logout, isAdmin } = useAuth()
 const { refreshNotificationSummary } = useNotificationBadges()
 const {
   leads,
@@ -376,7 +376,7 @@ async function openLeadFromRouteQuery() {
 }
 
 async function handleDeleteLeadClick() {
-  if (!selectedLead.value) {
+  if (!selectedLead.value || !isAdmin.value) {
     return
   }
 
@@ -1238,6 +1238,7 @@ async function removeLeadAttachmentFile(attachmentId: string) {
               Создать сделку
             </button>
             <button
+              v-if="isAdmin"
               type="button"
               class="lead-details-sheet__icon-action lead-details-sheet__icon-action--danger"
               aria-label="Удалить лид"

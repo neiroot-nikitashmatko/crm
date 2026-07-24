@@ -59,6 +59,9 @@ func (h *LeadHandler) Item(w http.ResponseWriter, r *http.Request) {
 
 	if len(parts) == 1 {
 		if r.Method == http.MethodDelete {
+			if !requireAdmin(w, r) {
+				return
+			}
 			if err := h.service.Delete(r.Context(), leadID); err != nil {
 				writeError(w, http.StatusBadRequest, err.Error())
 				return

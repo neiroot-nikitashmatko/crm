@@ -5,6 +5,7 @@ import { EyeOffOutline, EyeOutline } from '@vicons/ionicons5'
 import { NButton, NIcon, NInput } from 'naive-ui'
 import { useAuth } from '@/composables/useAuth'
 import { isPhoneFilled, normalizePhone, PHONE_PREFIX } from '@/utils/phone'
+import logoUrl from '@/assets/logo.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -44,7 +45,8 @@ async function handleSubmit() {
   <main class="login-page">
     <section class="login-card">
       <header class="login-card__header">
-        <h1 class="login-card__title">Авторизация</h1>
+        <h1 class="login-card__sr-title">Вход в CRM</h1>
+        <img class="login-card__logo" :src="logoUrl" alt="NEIROOT" />
       </header>
 
       <form class="login-card__form" @submit.prevent="handleSubmit">
@@ -122,25 +124,39 @@ async function handleSubmit() {
 }
 
 .login-card__header {
-  padding: 24px 28px 16px;
-  text-align: center;
-  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px 8px;
 }
 
-.login-card__title {
-  margin: 0;
-  color: #1a202c;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+.login-card__sr-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.login-card__logo {
+  display: block;
+  height: 30px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 
 .login-card__form {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px 28px 28px;
+  padding: 20px 28px 28px;
 }
 
 .login-card__field {

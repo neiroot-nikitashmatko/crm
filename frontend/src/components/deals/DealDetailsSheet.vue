@@ -7,6 +7,7 @@ import { DEAL_KANBAN_COLUMNS } from '@/constants/deals'
 import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
 import { useDeals } from '@/composables/useDeals'
 import { useLeads } from '@/composables/useLeads'
+import { useAuth } from '@/composables/useAuth'
 import { useTasks } from '@/composables/useTasks'
 import {
   getDealColumnValidationResult,
@@ -64,6 +65,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { isAdmin } = useAuth()
 const { deals, deleteDeal, updateDealComment, updateDealProfile, updateDealPickupDelivery, updateDealProduction, updateDealStatus, addDealAttachments, removeDealAttachment } = useDeals()
 const { leads } = useLeads()
 const { getDealRows, setDealRows, hydrateDealRows, saveDealProductRows } = useDealProductRows()
@@ -468,7 +470,7 @@ function handleStatusValidationGoToSection() {
 }
 
 async function handleDeleteDeal() {
-  if (!selectedDeal.value) return
+  if (!selectedDeal.value || !isAdmin.value) return
   try {
     await deleteDeal(selectedDeal.value.id)
     emit('close')
@@ -764,7 +766,12 @@ async function removeAttachment(attachmentId: string) {
           >
             Перейти в лид
           </button>
-          <button type="button" class="deal-details-sheet__icon-action deal-details-sheet__icon-action--danger" @click="handleDeleteDeal">
+          <button
+            v-if="isAdmin"
+            type="button"
+            class="deal-details-sheet__icon-action deal-details-sheet__icon-action--danger"
+            @click="handleDeleteDeal"
+          >
             <NIcon :size="16">
               <TrashOutline />
             </NIcon>

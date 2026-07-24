@@ -109,7 +109,7 @@ func (h *UserHandler) Item(w http.ResponseWriter, r *http.Request) {
 func requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 	claims, ok := auth.ClaimsFromContext(r.Context())
 	if !ok || claims.Role != "admin" {
-		writeError(w, http.StatusForbidden, "admin access required")
+		writeError(w, http.StatusForbidden, "Доступно только администратору")
 		return false
 	}
 	return true

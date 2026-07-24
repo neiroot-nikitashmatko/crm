@@ -65,6 +65,9 @@ func (h *DealHandler) Item(w http.ResponseWriter, r *http.Request) {
 
 	if len(parts) == 1 {
 		if r.Method == http.MethodDelete {
+			if !requireAdmin(w, r) {
+				return
+			}
 			if err := h.service.Delete(r.Context(), dealID); err != nil {
 				writeError(w, http.StatusBadRequest, err.Error())
 				return

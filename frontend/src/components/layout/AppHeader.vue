@@ -94,6 +94,12 @@ function goToLeads() {
         <span v-if="newLeadsBadge" class="app-header__badge">{{ newLeadsBadge }}</span>
       </button>
 
+      <span
+        v-if="showChatsBadge || showLeadsBadge"
+        class="app-header__actions-divider"
+        aria-hidden="true"
+      />
+
       <button
         type="button"
         class="app-header__menu-btn"
@@ -141,6 +147,15 @@ function goToLeads() {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.app-header__actions-divider {
+  flex-shrink: 0;
+  align-self: center;
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: #d1d9e2;
 }
 
 .app-header__menu-btn {
