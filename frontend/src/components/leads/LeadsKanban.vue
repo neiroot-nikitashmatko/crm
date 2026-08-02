@@ -7,6 +7,7 @@ import { getApiBaseUrl } from '@/api/httpClient'
 import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
 import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
+import { AVITO_CHAT_TRAFFIC_SOURCE } from '@/constants/trafficSources'
 import { useAuth } from '@/composables/useAuth'
 import { useNotificationBadges } from '@/composables/useNotificationBadges'
 import { getAuthToken } from '@/api/session'
@@ -73,7 +74,7 @@ const LEAD_DETAILS_SECTIONS: Array<{ id: LeadDetailsSectionId; title: string }> 
 ]
 
 function isAvitoChatLead(lead: Lead | null | undefined): boolean {
-  return (lead?.trafficSource ?? '').trim() === 'Авито Чат'
+  return (lead?.trafficSource ?? '').trim() === AVITO_CHAT_TRAFFIC_SOURCE
 }
 const WORKING_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 const TIME_MINUTE_STEP = 5

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"proclients/backend/internal/avito"
+	"proclients/backend/internal/constants"
 	"proclients/backend/internal/model"
 	"proclients/backend/internal/repository"
 
@@ -506,7 +507,7 @@ func (s *AvitoIntegrationService) ensureLeadForChat(
 		FirstName:     nickname,
 		Patronymic:    "",
 		Phone:         "",
-		TrafficSource: "Авито Чат",
+		TrafficSource: constants.AvitoChatTrafficSource,
 		ColumnID:      "new",
 		CreatedBy:     s.createdByUserID,
 	})

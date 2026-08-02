@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"proclients/backend/internal/constants"
 	"proclients/backend/internal/model"
 	"proclients/backend/internal/repository"
 )
@@ -41,6 +42,13 @@ func (s *LeadService) Create(ctx context.Context, input model.CreateLeadInput) (
 		return model.Lead{}, errors.New("firstName is required")
 	}
 	input.Phone = strings.TrimSpace(input.Phone)
+	input.TrafficSource = strings.TrimSpace(input.TrafficSource)
+	if input.TrafficSource == "" {
+		return model.Lead{}, errors.New("источник трафика обязателен")
+	}
+	if !constants.IsAllowedTrafficSource(input.TrafficSource) {
+		return model.Lead{}, errors.New("недопустимый источник трафика")
+	}
 	if strings.TrimSpace(input.ColumnID) == "" {
 		input.ColumnID = "new"
 	}

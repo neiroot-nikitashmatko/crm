@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
+import { NSelect } from 'naive-ui'
 import type { NewLeadForm } from '@/types/lead'
+import { MANUAL_TRAFFIC_SOURCE_OPTIONS } from '@/constants/trafficSources'
 
 const PHONE_PREFIX = '+7'
 
@@ -23,6 +25,12 @@ const form = reactive<NewLeadForm>({
   phone: PHONE_PREFIX,
   trafficSource: '',
 })
+
+const canSave = computed(
+  () =>
+    form.firstName.trim().length > 0 &&
+    form.trafficSource.trim().length > 0,
+)
 
 async function openForm() {
   isFormOpen.value = true
@@ -64,7 +72,14 @@ function cancel() {
 }
 
 function save() {
-  emit('save', { ...form })
+  if (!canSave.value) return
+  emit('save', {
+    ...form,
+    firstName: form.firstName.trim(),
+    patronymic: form.patronymic.trim(),
+    phone: form.phone.trim(),
+    trafficSource: form.trafficSource.trim(),
+  })
   cancel()
 }
 
@@ -119,16 +134,23 @@ defineExpose({
 
       <label class="leads-add-lead-panel__field">
         <span class="leads-add-lead-panel__label">Источник трафика</span>
-        <input
-          v-model="form.trafficSource"
-          type="text"
-          class="leads-add-lead-panel__input"
-          autocomplete="off"
+        <NSelect
+          :value="form.trafficSource || null"
+          class="leads-add-lead-panel__select"
+          :options="MANUAL_TRAFFIC_SOURCE_OPTIONS"
+          placeholder="Выберите источник"
+          :clearable="false"
+          size="small"
+          @update:value="(value: string | null) => { form.trafficSource = value ?? '' }"
         />
       </label>
 
       <div class="leads-add-lead-panel__actions">
-        <button type="submit" class="leads-add-lead-panel__btn leads-add-lead-panel__btn--primary">
+        <button
+          type="submit"
+          class="leads-add-lead-panel__btn leads-add-lead-panel__btn--primary"
+          :disabled="!canSave"
+        >
           Сохранить
         </button>
         <button
@@ -220,6 +242,15 @@ defineExpose({
   color: #a0aec0;
 }
 
+.leads-add-lead-panel__select {
+  width: 100%;
+}
+
+.leads-add-lead-panel__select :deep(.n-base-selection) {
+  min-height: 36px;
+  border-radius: 6px;
+}
+
 .leads-add-lead-panel__actions {
   display: flex;
   flex-direction: column;
@@ -238,8 +269,14 @@ defineExpose({
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    opacity 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.leads-add-lead-panel__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .leads-add-lead-panel__btn--primary {
@@ -248,7 +285,7 @@ defineExpose({
   color: #ffffff;
 }
 
-.leads-add-lead-panel__btn--primary:hover {
+.leads-add-lead-panel__btn--primary:hover:not(:disabled) {
   background: #2d3748;
   border-color: #2d3748;
 }

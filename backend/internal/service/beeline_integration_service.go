@@ -191,7 +191,7 @@ func resolveBeelineTrafficSource(hint string, rawBody []byte, contentType string
 		}
 	}
 
-	return "Билайн"
+	return constants.BeelineFallbackSource
 }
 
 func phoneDigitsKey(value string) string {
