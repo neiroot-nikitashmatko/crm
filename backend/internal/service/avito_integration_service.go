@@ -452,10 +452,10 @@ func (s *AvitoIntegrationService) ensureLeadForChat(
 
 	if getErr == nil {
 		lead, leadErr := s.leadRepo.GetByID(ctx, existing.LeadID)
-		if leadErr == nil && lead.ColumnID != "failed" {
+		if leadErr == nil && lead.ColumnID != "failed" && lead.ColumnID != "low_quality" {
 			return existing.LeadID, false, nil
 		}
-		if leadErr == nil && lead.ColumnID == "failed" {
+		if leadErr == nil && (lead.ColumnID == "failed" || lead.ColumnID == "low_quality") {
 			// New CRM lead only when the client writes again — not on our outgoing.
 			if direction != "incoming" {
 				return existing.LeadID, false, nil

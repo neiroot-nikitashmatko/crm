@@ -68,7 +68,7 @@ func (s *LeadService) UpdateColumn(ctx context.Context, leadID string, columnID 
 	if strings.TrimSpace(columnID) == "" {
 		return model.Lead{}, errors.New("columnId is required")
 	}
-	if columnID == "failed" {
+	if columnID == "failed" || columnID == "low_quality" {
 		if failureReason == nil || strings.TrimSpace(*failureReason) == "" {
 			return model.Lead{}, errors.New("failureReason is required")
 		}

@@ -89,7 +89,7 @@ func (h *LeadHandler) Item(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var failureReason *string
-		if req.ColumnID == "failed" {
+		if req.ColumnID == "failed" || req.ColumnID == "low_quality" {
 			trimmed := strings.TrimSpace(req.FailureReason)
 			if trimmed == "" {
 				writeError(w, http.StatusBadRequest, "failureReason is required")

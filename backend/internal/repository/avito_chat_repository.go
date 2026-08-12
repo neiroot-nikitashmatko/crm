@@ -137,7 +137,7 @@ SELECT
 FROM avito_chats c
 INNER JOIN leads l ON l.id = c.lead_id
   AND l.deleted_at IS NULL
-  AND l.column_id <> 'failed'
+  AND l.column_id NOT IN ('failed', 'low_quality')
 ORDER BY c.updated_at DESC, c.created_at DESC
 `
 	rows, err := r.db.Query(ctx, query)
@@ -312,7 +312,7 @@ SELECT COUNT(*)::int
 FROM avito_chats c
 INNER JOIN leads l ON l.id = c.lead_id
   AND l.deleted_at IS NULL
-  AND l.column_id <> 'failed'
+  AND l.column_id NOT IN ('failed', 'low_quality')
 WHERE EXISTS (
   SELECT 1
   FROM avito_messages m

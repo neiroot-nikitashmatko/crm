@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
-import { TrashOutline } from '@vicons/ionicons5'
+import { BanOutline, TrashOutline } from '@vicons/ionicons5'
 import { getApiBaseUrl } from '@/api/httpClient'
 import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
@@ -129,6 +129,8 @@ const isPickupDateModalOpen = ref(false)
 const isDeliveryDateModalOpen = ref(false)
 const isFailureReasonModalOpen = ref(false)
 const failureReasonDraft = ref('')
+const isLowQualityReasonModalOpen = ref(false)
+const lowQualityReasonDraft = ref('')
 const taskForm = reactive({
   title: '',
   text: '',
@@ -156,6 +158,7 @@ const visibleLeadDetailsSections = computed(() =>
   ),
 )
 const canConfirmFailureReason = computed(() => failureReasonDraft.value.trim().length > 0)
+const canConfirmLowQualityReason = computed(() => lowQualityReasonDraft.value.trim().length > 0)
 const leadCommentDrafts = reactive<Record<string, string>>({})
 const leadProfileDrafts = reactive<
   Record<string, { firstName: string; patronymic: string; phone: string }>
@@ -344,6 +347,8 @@ function handleOpenLead(lead: Lead) {
   activeDetailsSection.value = 'lead-info'
   isFailureReasonModalOpen.value = false
   failureReasonDraft.value = ''
+  isLowQualityReasonModalOpen.value = false
+  lowQualityReasonDraft.value = ''
 }
 
 function closeLeadDetails() {
@@ -353,6 +358,8 @@ function closeLeadDetails() {
   isTaskDateModalOpen.value = false
   isFailureReasonModalOpen.value = false
   failureReasonDraft.value = ''
+  isLowQualityReasonModalOpen.value = false
+  lowQualityReasonDraft.value = ''
 
   if (route.query.leadId) {
     void router.replace({ name: 'leads' })
@@ -424,6 +431,37 @@ async function confirmFailureReason() {
     void refreshNotificationSummary()
   } catch (error) {
     console.error('Не удалось перевести лид в проваленные', error)
+  }
+}
+
+function openLowQualityReasonModal() {
+  lowQualityReasonDraft.value = ''
+  isLowQualityReasonModalOpen.value = true
+}
+
+function closeLowQualityReasonModal() {
+  isLowQualityReasonModalOpen.value = false
+  lowQualityReasonDraft.value = ''
+}
+
+async function confirmLowQualityReason() {
+  if (!selectedLead.value || !canConfirmLowQualityReason.value) return
+
+  const leadId = selectedLead.value.id
+  const reason = lowQualityReasonDraft.value.trim()
+
+  try {
+    await moveLeadToColumn(leadId, 'low_quality', reason)
+    closeLowQualityReasonModal()
+    void refreshNotificationSummary()
+    selectedLeadId.value = null
+    selectedLeadTask.value = null
+    await router.replace({ name: 'leads' })
+  } catch (error) {
+    console.error('Не удалось перевести лид в некачественные', error)
+    window.alert(
+      error instanceof Error ? error.message : 'Не удалось перевести лид в некачественные',
+    )
   }
 }
 
@@ -1239,6 +1277,17 @@ async function removeLeadAttachmentFile(attachmentId: string) {
               Создать сделку
             </button>
             <button
+              type="button"
+              class="lead-details-sheet__icon-action lead-details-sheet__icon-action--danger"
+              aria-label="Некачественный лид"
+              title="Некачественный лид"
+              @click="openLowQualityReasonModal"
+            >
+              <NIcon :size="16">
+                <BanOutline />
+              </NIcon>
+            </button>
+            <button
               v-if="isAdmin"
               type="button"
               class="lead-details-sheet__icon-action lead-details-sheet__icon-action--danger"
@@ -1799,6 +1848,25 @@ async function removeLeadAttachmentFile(attachmentId: string) {
 
       <template #actions>
         <AppModalButton :disabled="!canConfirmFailureReason" @click="confirmFailureReason">
+          Подтвердить
+        </AppModalButton>
+      </template>
+    </AppModal>
+
+    <AppModal
+      v-model:show="isLowQualityReasonModalOpen"
+      title="Некачественный лид"
+      @close="closeLowQualityReasonModal"
+    >
+      <textarea
+        v-model="lowQualityReasonDraft"
+        class="app-modal__textarea"
+        rows="5"
+        placeholder="Укажите причину, почему лид некачественный"
+      />
+
+      <template #actions>
+        <AppModalButton :disabled="!canConfirmLowQualityReason" @click="confirmLowQualityReason">
           Подтвердить
         </AppModalButton>
       </template>

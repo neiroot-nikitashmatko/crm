@@ -126,7 +126,7 @@ func (r *LeadRepository) UpdateColumn(ctx context.Context, leadID string, column
 	_, err := r.db.Exec(ctx, `
 UPDATE leads
 SET column_id = $2,
-    failure_reason = CASE WHEN $2 = 'failed' THEN COALESCE($3, '') ELSE failure_reason END,
+    failure_reason = CASE WHEN $2 IN ('failed', 'low_quality') THEN COALESCE($3, '') ELSE failure_reason END,
     updated_at = now()
 WHERE id = $1::uuid AND deleted_at IS NULL
 `, leadID, columnID, failureReason)
