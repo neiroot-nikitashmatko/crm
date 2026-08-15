@@ -183,5 +183,6 @@ export async function fetchClosedDealsList(
     category: String(item.category ?? ''),
     employee: String(item.employee ?? ''),
     createdAt: Number(item.createdAt ?? 0),
+    closedAt: Number(item.closedAt ?? 0),
   }))
 }

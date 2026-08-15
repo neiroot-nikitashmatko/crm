@@ -23,9 +23,9 @@ const emit = defineEmits<{
   select: [dealId: string]
 }>()
 
-function formatDealDate(createdAt: number): string {
-  if (!createdAt) return '—'
-  return DATE_FORMATTER.format(new Date(createdAt))
+function formatDealDate(timestamp: number): string {
+  if (!timestamp) return '—'
+  return DATE_FORMATTER.format(new Date(timestamp))
 }
 
 function formatDealNomenclature(deal: ClosedDealListItem): string {
@@ -62,7 +62,7 @@ function categoryColor(category: string): string {
           <span class="analytics-closed-deals-modal__item-row">
             <span class="analytics-closed-deals-modal__item-number">#{{ deal.dealNumber }}</span>
             <span class="analytics-closed-deals-modal__item-date">
-              {{ formatDealDate(deal.createdAt) }}
+              {{ formatDealDate(deal.closedAt || deal.createdAt) }}
             </span>
           </span>
           <span class="analytics-closed-deals-modal__item-row">

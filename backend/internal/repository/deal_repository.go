@@ -242,6 +242,10 @@ func (r *DealRepository) UpdateStatus(ctx context.Context, dealID string, status
 UPDATE deals
 SET status = $2::deal_status,
     failure_reason = CASE WHEN $2::text = 'failed' THEN COALESCE($3, '') ELSE failure_reason END,
+    closed_at = CASE
+      WHEN $2::text = 'closed' THEN COALESCE(closed_at, now())
+      ELSE NULL
+    END,
     updated_at = now()
 WHERE id = $1::uuid AND deleted_at IS NULL
 `, dealID, status, failureReason)

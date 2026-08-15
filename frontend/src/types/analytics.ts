@@ -47,6 +47,7 @@ export interface ClosedDealListItem {
   category: string
   employee: string
   createdAt: number
+  closedAt: number
 }
 
 export type AnalyticsDateRange = [number, number]

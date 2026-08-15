@@ -145,8 +145,9 @@ WHERE deleted_at IS NULL
   AND status = 'closed'
   AND BTRIM(production_nomenclature) <> ''
   AND BTRIM(production_employee) <> ''
-  AND created_at >= $1
-  AND created_at <= $2
+  AND closed_at IS NOT NULL
+  AND closed_at >= $1
+  AND closed_at <= $2
 GROUP BY 1
 ORDER BY items_count DESC, nomenclature ASC
 `
@@ -184,8 +185,9 @@ FROM deals
 WHERE deleted_at IS NULL
   AND status = 'closed'
   AND BTRIM(production_employee) <> ''
-  AND created_at >= $1
-  AND created_at <= $2
+  AND closed_at IS NOT NULL
+  AND closed_at >= $1
+  AND closed_at <= $2
 GROUP BY 1
 ORDER BY items_count DESC, employee ASC
 `
@@ -226,12 +228,14 @@ SELECT
   phone,
   BTRIM(production_nomenclature),
   BTRIM(production_employee),
-  created_at
+  created_at,
+  closed_at
 FROM deals
 WHERE deleted_at IS NULL
   AND status = 'closed'
-  AND created_at >= $1
-  AND created_at <= $2
+  AND closed_at IS NOT NULL
+  AND closed_at >= $1
+  AND closed_at <= $2
   AND ($3::bool = false OR BTRIM(production_employee) <> '')
   AND (
     $4::bool = false
@@ -240,7 +244,7 @@ WHERE deleted_at IS NULL
       AND BTRIM(production_employee) <> ''
     )
   )
-ORDER BY created_at DESC, deal_number DESC
+ORDER BY closed_at DESC, deal_number DESC
 `
 	rows, err := r.db.Query(ctx, query, from, to, requireEmployee, requireProduction)
 	if err != nil {
@@ -252,6 +256,7 @@ ORDER BY created_at DESC, deal_number DESC
 	for rows.Next() {
 		var item model.ClosedDealListItem
 		var createdAt time.Time
+		var closedAt *time.Time
 		if err := rows.Scan(
 			&item.ID,
 			&item.DealNumber,
@@ -261,10 +266,14 @@ ORDER BY created_at DESC, deal_number DESC
 			&item.Nomenclature,
 			&item.Employee,
 			&createdAt,
+			&closedAt,
 		); err != nil {
 			return nil, err
 		}
 		item.CreatedAt = createdAt.UnixMilli()
+		if closedAt != nil {
+			item.ClosedAt = closedAt.UnixMilli()
+		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {

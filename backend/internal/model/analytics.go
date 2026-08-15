@@ -48,4 +48,5 @@ type ClosedDealListItem struct {
 	Category     string `json:"category"`
 	Employee     string `json:"employee"`
 	CreatedAt    int64  `json:"createdAt"`
+	ClosedAt     int64  `json:"closedAt"`
 }
