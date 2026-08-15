@@ -1,5 +1,5 @@
 export type EmployeeRole = 'admin' | 'manager'
-export type EmployeePosition = 'Менеджер' | 'Мастер'
+export type EmployeePosition = 'Менеджер' | 'Мастер' | 'Руководитель'
 
 export interface Employee {
   id: string
@@ -10,6 +10,7 @@ export interface Employee {
   role: EmployeeRole
   position: EmployeePosition | string
   birthDate?: string | null
+  hasAvatar: boolean
   isActive: boolean
   createdAt: number
   updatedAt: number

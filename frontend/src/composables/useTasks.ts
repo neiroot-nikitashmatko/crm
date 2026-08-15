@@ -41,6 +41,7 @@ function normalizeTask(raw: any): Task {
           id: normalized.id || `${raw.id}-activity-${index}`,
           type: normalized.type,
           author: normalized.author,
+          authorId: normalized.authorId,
           text: normalized.text,
           createdAt: new Date(normalized.createdAt),
         } satisfies TaskActivityEntry
@@ -85,6 +86,7 @@ function toTaskActivityEntry(activity: StoredActivity): TaskActivityEntry {
     id: activity.id,
     type: activity.type,
     author: activity.author,
+    authorId: activity.authorId,
     text: activity.text,
     createdAt: new Date(activity.createdAt),
   }

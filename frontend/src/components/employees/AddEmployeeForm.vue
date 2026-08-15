@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NDatePicker, NInput, NSelect } from 'naive-ui'
+import { CameraOutline, CloseOutline } from '@vicons/ionicons5'
+import { NDatePicker, NIcon, NInput, NSelect } from 'naive-ui'
 import AppModalButton from '@/components/common/AppModalButton.vue'
+import EmployeeAvatarCropModal from '@/components/employees/EmployeeAvatarCropModal.vue'
 import { birthDateFromTimestamp, UsersApiError } from '@/api/users'
 import { useEmployees } from '@/composables/useEmployees'
-import { EMPLOYEE_POSITION_OPTIONS, EMPLOYEE_ROLE_OPTIONS } from '@/constants/employees'
+import { EMPLOYEE_POSITION_OPTIONS, EMPLOYEE_ROLE_OPTIONS, isHeadEmployeePosition, roleForEmployeePosition } from '@/constants/employees'
 import type { EmployeePosition, EmployeeRole } from '@/types/employee'
 import { isPhoneFilled, normalizePhone, PHONE_PREFIX } from '@/utils/phone'
 
@@ -13,6 +15,14 @@ const router = useRouter()
 const { addEmployee } = useEmployees()
 const isSubmitting = ref(false)
 const errorMessage = ref('')
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarFile = ref<File | null>(null)
+const avatarPreviewUrl = ref('')
+const cropSourceUrl = ref('')
+const isCropOpen = ref(false)
+
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024
+const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 const fieldInputTheme = {
   border: '1px solid #cbd5e1',
@@ -58,6 +68,9 @@ const employeeForm = reactive({
   role: null as EmployeeRole | null,
 })
 
+const isHeadPosition = computed(() => isHeadEmployeePosition(employeeForm.position))
+const selectedRole = computed(() => roleForEmployeePosition(employeeForm.position, employeeForm.role))
+
 const canSubmit = computed(
   () =>
     employeeForm.firstName.trim().length > 0 &&
@@ -67,8 +80,14 @@ const canSubmit = computed(
     isPhoneFilled(employeeForm.phone) &&
     employeeForm.password.trim().length > 0 &&
     employeeForm.position !== null &&
-    employeeForm.role !== null,
+    selectedRole.value !== null,
 )
+
+const avatarInitials = computed(() => {
+  const last = employeeForm.lastName.trim().charAt(0)
+  const first = employeeForm.firstName.trim().charAt(0)
+  return `${last}${first}`.toUpperCase()
+})
 
 function resetForm() {
   employeeForm.firstName = ''
@@ -79,6 +98,72 @@ function resetForm() {
   employeeForm.password = ''
   employeeForm.position = null
   employeeForm.role = null
+  clearAvatar()
+}
+
+function revokeAvatarPreview() {
+  if (!avatarPreviewUrl.value) return
+  URL.revokeObjectURL(avatarPreviewUrl.value)
+  avatarPreviewUrl.value = ''
+}
+
+function revokeCropSource() {
+  if (!cropSourceUrl.value) return
+  URL.revokeObjectURL(cropSourceUrl.value)
+  cropSourceUrl.value = ''
+}
+
+function clearAvatar() {
+  revokeAvatarPreview()
+  avatarFile.value = null
+  if (avatarInput.value) avatarInput.value.value = ''
+}
+
+function triggerAvatarPick() {
+  avatarInput.value?.click()
+}
+
+function handleAvatarChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  if (!AVATAR_MIME_TYPES.includes(file.type) || file.size > AVATAR_MAX_BYTES) {
+    errorMessage.value = 'Нужно фото JPEG, PNG или WebP до 2 МБ'
+    input.value = ''
+    return
+  }
+
+  errorMessage.value = ''
+  revokeCropSource()
+  cropSourceUrl.value = URL.createObjectURL(file)
+  isCropOpen.value = true
+  input.value = ''
+}
+
+function handleCropConfirm(file: File) {
+  revokeAvatarPreview()
+  avatarFile.value = file
+  avatarPreviewUrl.value = URL.createObjectURL(file)
+}
+
+function handleCropClose() {
+  const url = cropSourceUrl.value
+  if (!url) return
+  window.setTimeout(() => {
+    if (cropSourceUrl.value === url) revokeCropSource()
+  }, 400)
+}
+
+onBeforeUnmount(() => {
+  revokeAvatarPreview()
+  revokeCropSource()
+})
+
+function handlePositionUpdate(value: EmployeePosition | null) {
+  if (isHeadEmployeePosition(value)) {
+    employeeForm.role = 'admin'
+  }
 }
 
 function handlePhoneInput(value: string) {
@@ -86,13 +171,13 @@ function handlePhoneInput(value: string) {
 }
 
 function handleSubmit() {
-  if (!canSubmit.value || isSubmitting.value || employeeForm.role === null || employeeForm.position === null) return
+  if (!canSubmit.value || isSubmitting.value || employeeForm.position === null || selectedRole.value === null) return
 
   void submitEmployee()
 }
 
 async function submitEmployee() {
-  if (employeeForm.role === null || employeeForm.position === null) return
+  if (employeeForm.position === null || selectedRole.value === null) return
 
   isSubmitting.value = true
   errorMessage.value = ''
@@ -113,8 +198,8 @@ async function submitEmployee() {
       phone: employeeForm.phone.trim(),
       password: employeeForm.password,
       position: employeeForm.position,
-      role: employeeForm.role,
-    })
+      role: selectedRole.value,
+    }, avatarFile.value)
     resetForm()
     await router.push({ name: 'employees-list' })
   } catch (error) {
@@ -135,6 +220,51 @@ defineExpose({ resetForm })
 
 <template>
   <form class="add-employee-form" @submit.prevent="handleSubmit">
+    <div class="add-employee-form__avatar">
+      <input
+        ref="avatarInput"
+        type="file"
+        class="add-employee-form__avatar-input"
+        accept="image/jpeg,image/png,image/webp"
+        @change="handleAvatarChange"
+      />
+      <button
+        type="button"
+        class="add-employee-form__avatar-button"
+        title="Загрузить фото"
+        aria-label="Загрузить фото сотрудника"
+        @click="triggerAvatarPick"
+      >
+        <img
+          v-if="avatarPreviewUrl"
+          class="add-employee-form__avatar-image"
+          :src="avatarPreviewUrl"
+          alt=""
+        />
+        <span v-else-if="avatarInitials" class="add-employee-form__avatar-fallback">
+          {{ avatarInitials }}
+        </span>
+        <NIcon v-else class="add-employee-form__avatar-icon" :size="20" :component="CameraOutline" />
+      </button>
+      <button
+        v-if="avatarPreviewUrl"
+        type="button"
+        class="add-employee-form__avatar-remove"
+        title="Убрать фото"
+        aria-label="Убрать фото"
+        @click="clearAvatar"
+      >
+        <NIcon :size="14" :component="CloseOutline" />
+      </button>
+      <p class="add-employee-form__avatar-hint">Загрузите фото сотрудника</p>
+    </div>
+
+    <EmployeeAvatarCropModal
+      v-model:show="isCropOpen"
+      :image-url="cropSourceUrl"
+      @confirm="handleCropConfirm"
+      @close="handleCropClose"
+    />
     <div class="add-employee-form__columns">
       <section class="add-employee-form__section">
         <h3 class="add-employee-form__section-title">Личные данные</h3>
@@ -244,10 +374,15 @@ defineExpose({ resetForm })
             :options="EMPLOYEE_POSITION_OPTIONS"
             placeholder="Выберите должность"
             clearable
+            @update:value="handlePositionUpdate"
           />
         </label>
 
-        <label class="add-employee-form__field">
+        <p v-if="isHeadPosition" class="add-employee-form__access-hint">
+          Руководителю доступны все разделы системы
+        </p>
+
+        <label v-else class="add-employee-form__field">
           <span class="add-employee-form__label">
             Роль
             <span class="add-employee-form__required" aria-hidden="true">*</span>
@@ -279,8 +414,92 @@ defineExpose({ resetForm })
 .add-employee-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   width: 100%;
+}
+
+.add-employee-form__avatar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-employee-form__avatar-input {
+  display: none;
+}
+
+.add-employee-form__avatar-button {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f6f8fa;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.add-employee-form__avatar-button:hover {
+  border-color: #cbd5e1;
+  background: #eef2f6;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.add-employee-form__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.add-employee-form__avatar-fallback {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #4a5568;
+  line-height: 1;
+}
+
+.add-employee-form__avatar-icon {
+  color: #64748b;
+}
+
+.add-employee-form__avatar-remove {
+  position: absolute;
+  top: 0;
+  right: calc(50% - 40px);
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.add-employee-form__avatar-remove:hover {
+  border-color: #cbd5e1;
+  color: #1a202c;
+}
+
+.add-employee-form__avatar-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #718096;
+  text-align: center;
 }
 
 .add-employee-form__columns {
@@ -339,6 +558,13 @@ defineExpose({ resetForm })
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.add-employee-form__access-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1f883d;
 }
 
 .add-employee-form__label {

@@ -48,6 +48,7 @@ SELECT
   i.activity_type,
   i.text,
   COALESCE(NULLIF(trim(concat_ws(' ', u.last_name, u.first_name, u.patronymic)), ''), u.phone, i.author_id::text) AS author_label,
+  i.author_id::text,
   i.created_at
 FROM inserted i
 LEFT JOIN users u ON u.id = i.author_id
@@ -63,6 +64,7 @@ SELECT
   a.activity_type,
   a.text,
   COALESCE(NULLIF(trim(concat_ws(' ', u.last_name, u.first_name, u.patronymic)), ''), u.phone, a.author_id::text) AS author_label,
+  a.author_id::text,
   a.created_at
 FROM activities a
 LEFT JOIN users u ON u.id = a.author_id
@@ -105,6 +107,7 @@ SELECT
   a.activity_type,
   a.text,
   COALESCE(NULLIF(trim(concat_ws(' ', u.last_name, u.first_name, u.patronymic)), ''), u.phone, a.author_id::text) AS author_label,
+  a.author_id::text,
   a.created_at
 FROM activities a
 LEFT JOIN users u ON u.id = a.author_id
@@ -129,6 +132,7 @@ ORDER BY a.created_at DESC
 			&item.Type,
 			&item.Text,
 			&item.Author,
+			&item.AuthorID,
 			&createdAt,
 		); err != nil {
 			return nil, err
@@ -172,6 +176,7 @@ func scanActivityMeta(row activityMetaScanner) (model.Activity, error) {
 		&item.Type,
 		&item.Text,
 		&item.Author,
+		&item.AuthorID,
 		&createdAt,
 	)
 	if err != nil {

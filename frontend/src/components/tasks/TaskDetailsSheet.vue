@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { AttachOutline, PaperPlaneOutline } from '@vicons/ionicons5'
 import { NButton, NDatePicker, NIcon, NInput } from 'naive-ui'
 import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
+import EntityActivityTimeline from '@/components/common/EntityActivityTimeline.vue'
 import { useDeals } from '@/composables/useDeals'
 import { useLeads } from '@/composables/useLeads'
 import { useTasks } from '@/composables/useTasks'
@@ -430,26 +431,7 @@ async function handleNavigationClick() {
 
             <section class="task-details-sheet__side-block task-details-sheet__side-block--timeline">
               <h3 class="task-details-sheet__side-title">Таймлайн</h3>
-
-              <ul v-if="sortedActivities.length > 0" class="task-details-sheet__timeline">
-                <li
-                  v-for="entry in sortedActivities"
-                  :key="entry.id"
-                  class="task-details-sheet__timeline-entry"
-                  :class="{
-                    'task-details-sheet__timeline-entry--comment': entry.type === 'comment',
-                    'task-details-sheet__timeline-entry--system': entry.type === 'system',
-                  }"
-                >
-                  <div class="task-details-sheet__timeline-entry-body">
-                    <p class="task-details-sheet__timeline-text">{{ entry.text }}</p>
-                    <p class="task-details-sheet__timeline-meta">
-                      {{ formatDateTime(entry.createdAt) }}
-                    </p>
-                  </div>
-                </li>
-              </ul>
-              <p v-else class="task-details-sheet__timeline-empty">Таймлайн пока пуст</p>
+              <EntityActivityTimeline :activities="sortedActivities" />
             </section>
           </aside>
         </div>
@@ -761,73 +743,6 @@ async function handleNavigationClick() {
 .task-details-sheet__comment-box-actions .task-details-sheet__close-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.task-details-sheet__timeline {
-  margin: 0;
-  padding: 4px 0 0 14px;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-left: 1px solid #e2e8f0;
-}
-
-.task-details-sheet__timeline-entry {
-  position: relative;
-  padding: 0 0 14px 12px;
-}
-
-.task-details-sheet__timeline-entry::before {
-  content: '';
-  position: absolute;
-  left: -18px;
-  top: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  box-shadow: 0 0 0 3px #ffffff;
-}
-
-.task-details-sheet__timeline-entry--comment::before {
-  background: #1f883d;
-  box-shadow: 0 0 0 3px rgba(31, 136, 61, 0.14);
-}
-
-.task-details-sheet__timeline-entry--system::before {
-  background: #cbd5e1;
-}
-
-.task-details-sheet__timeline-entry-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.task-details-sheet__timeline-text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #1a202c;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.task-details-sheet__timeline-entry--system .task-details-sheet__timeline-text {
-  color: #4a5568;
-}
-
-.task-details-sheet__timeline-meta {
-  margin: 0;
-  font-size: 12px;
-  color: #718096;
-}
-
-.task-details-sheet__timeline-empty {
-  margin: 0;
-  font-size: 13px;
-  color: #718096;
 }
 
 @media (max-width: 960px) {

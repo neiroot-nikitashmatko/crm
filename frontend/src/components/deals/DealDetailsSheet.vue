@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
-import { TrashOutline } from '@vicons/ionicons5'
+import { AttachOutline, PaperPlaneOutline, TrashOutline } from '@vicons/ionicons5'
 import { DEAL_KANBAN_COLUMNS } from '@/constants/deals'
 import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
 import { useDeals } from '@/composables/useDeals'
@@ -27,6 +27,7 @@ import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
 import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
+import EntityActivityTimeline from '@/components/common/EntityActivityTimeline.vue'
 import { useDealProductRows } from '@/composables/useDealProductRows'
 import type { ProductRow } from '@/types/productRow'
 
@@ -66,7 +67,7 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const { isAdmin } = useAuth()
-const { deals, deleteDeal, updateDealComment, updateDealProfile, updateDealPickupDelivery, updateDealProduction, updateDealStatus, addDealAttachments, removeDealAttachment } = useDeals()
+const { deals, deleteDeal, updateDealProfile, updateDealPickupDelivery, updateDealProduction, updateDealStatus, addDealAttachments, addDealActivityComment, removeDealAttachment } = useDeals()
 const { leads } = useLeads()
 const { getDealRows, setDealRows, hydrateDealRows, saveDealProductRows } = useDealProductRows()
 const { addTask, getDealTasks, loadTasks } = useTasks()
@@ -79,6 +80,7 @@ const isCreateTaskModalOpen = ref(false)
 const isTaskDateModalOpen = ref(false)
 const selectedDealTask = ref<Task | null>(null)
 const commentDraft = ref('')
+const dealCommentDrafts = reactive<Record<string, string>>({})
 const firstNameDraft = ref('')
 const patronymicDraft = ref('')
 const isStatusValidationModalOpen = ref(false)
@@ -258,7 +260,7 @@ watch(
   () => selectedDeal.value?.id,
   () => {
     if (!selectedDeal.value) return
-    commentDraft.value = selectedDeal.value.dealComments ?? ''
+    commentDraft.value = dealCommentDrafts[selectedDeal.value.id] ?? ''
     firstNameDraft.value = selectedDeal.value.firstName ?? ''
     patronymicDraft.value = selectedDeal.value.patronymic ?? ''
     isStatusValidationModalOpen.value = false
@@ -479,16 +481,10 @@ async function handleDeleteDeal() {
   }
 }
 
-async function persistDealComment() {
+watch(commentDraft, (text) => {
   if (!selectedDeal.value) return
-  if (commentDraft.value === selectedDeal.value.dealComments) return
-  selectedDeal.value.dealComments = commentDraft.value
-  try {
-    await updateDealComment(selectedDeal.value.id, commentDraft.value)
-  } catch (error) {
-    console.error('Не удалось сохранить комментарий сделки', error)
-  }
-}
+  dealCommentDrafts[selectedDeal.value.id] = text
+})
 
 function syncLinkedLeadProfile(leadId: string | null | undefined, firstName: string, patronymic: string) {
   if (!leadId) return
@@ -737,6 +733,21 @@ async function removeAttachment(attachmentId: string) {
     await removeDealAttachment(selectedDeal.value.id, attachmentId)
   } catch (error) {
     console.error('Не удалось удалить файл', error)
+  }
+}
+
+async function sendDealComment() {
+  if (!selectedDeal.value) return
+
+  const text = commentDraft.value.trim()
+  if (!text) return
+
+  try {
+    await addDealActivityComment(selectedDeal.value.id, text)
+    commentDraft.value = ''
+    dealCommentDrafts[selectedDeal.value.id] = ''
+  } catch (error) {
+    console.error('Не удалось добавить комментарий сделки', error)
   }
 }
 </script>
@@ -1051,15 +1062,38 @@ async function removeAttachment(attachmentId: string) {
                 v-model="commentDraft"
                 class="deal-details-sheet__comment-area"
                 rows="4"
-                placeholder="Заметки по сделке..."
-                @blur="persistDealComment"
+                placeholder="Напишите комментарий..."
               />
 
               <div class="deal-details-sheet__comment-box-foot">
-                <input id="deal-attachment-input" type="file" class="deal-details-sheet__file-input" multiple @change="handleAttachmentChange" />
-                <button type="button" class="deal-details-sheet__attachment-btn" @click="triggerAttachmentPick">
-                  Прикрепить файл
-                </button>
+                <input
+                  id="deal-attachment-input"
+                  type="file"
+                  class="deal-details-sheet__file-input"
+                  multiple
+                  @change="handleAttachmentChange"
+                />
+                <div class="deal-details-sheet__comment-box-actions">
+                  <button
+                    type="button"
+                    class="deal-details-sheet__close-btn"
+                    title="Прикрепить файл"
+                    aria-label="Прикрепить файл"
+                    @click="triggerAttachmentPick"
+                  >
+                    <NIcon :size="16" :component="AttachOutline" />
+                  </button>
+                  <button
+                    type="button"
+                    class="deal-details-sheet__close-btn"
+                    title="Отправить комментарий"
+                    aria-label="Отправить комментарий"
+                    :disabled="!commentDraft.trim()"
+                    @click="sendDealComment"
+                  >
+                    <NIcon :size="16" :component="PaperPlaneOutline" />
+                  </button>
+                </div>
 
                 <EntityAttachmentList
                   :attachments="selectedDeal.attachments"
@@ -1071,26 +1105,7 @@ async function removeAttachment(attachmentId: string) {
 
           <section class="deal-details-sheet__side-block deal-details-sheet__side-block--timeline">
             <h3 class="deal-details-sheet__side-title">Таймлайн</h3>
-
-            <ul v-if="sortedActivities.length > 0" class="deal-details-sheet__timeline">
-              <li
-                v-for="entry in sortedActivities"
-                :key="entry.id"
-                class="deal-details-sheet__timeline-entry"
-                :class="{
-                  'deal-details-sheet__timeline-entry--comment': entry.type === 'comment',
-                  'deal-details-sheet__timeline-entry--system': entry.type === 'system',
-                }"
-              >
-                <div class="deal-details-sheet__timeline-entry-body">
-                  <p class="deal-details-sheet__timeline-text">{{ entry.text }}</p>
-                  <p class="deal-details-sheet__timeline-meta">
-                    {{ formatDateTime(entry.createdAt) }}
-                  </p>
-                </div>
-              </li>
-            </ul>
-            <p v-else class="deal-details-sheet__timeline-empty">Таймлайн пока пуст</p>
+            <EntityActivityTimeline :activities="sortedActivities" />
           </section>
         </aside>
       </div>
@@ -1726,93 +1741,15 @@ async function removeAttachment(attachmentId: string) {
   display: none;
 }
 
-.deal-details-sheet__attachment-btn {
-  align-self: flex-start;
-  padding: 8px 12px;
-  border: 1px solid #d1d9e2;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #4a5568;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.deal-details-sheet__attachment-btn:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #1a202c;
-}
-
-.deal-details-sheet__timeline {
-  margin: 0;
-  padding: 4px 0 0 14px;
-  list-style: none;
+.deal-details-sheet__comment-box-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-left: 1px solid #e2e8f0;
+  align-items: center;
+  gap: 8px;
 }
 
-.deal-details-sheet__timeline-entry {
-  position: relative;
-  padding: 0 0 14px 12px;
-}
-
-.deal-details-sheet__timeline-entry::before {
-  content: '';
-  position: absolute;
-  left: -18px;
-  top: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  box-shadow: 0 0 0 3px #ffffff;
-}
-
-.deal-details-sheet__timeline-entry--comment::before {
-  background: #1f883d;
-  box-shadow: 0 0 0 3px rgba(31, 136, 61, 0.14);
-}
-
-.deal-details-sheet__timeline-entry--system::before {
-  background: #cbd5e1;
-}
-
-.deal-details-sheet__timeline-entry-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.deal-details-sheet__timeline-text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #1a202c;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.deal-details-sheet__timeline-entry--system .deal-details-sheet__timeline-text {
-  color: #4a5568;
-}
-
-.deal-details-sheet__timeline-meta {
-  margin: 0;
-  font-size: 12px;
-  color: #718096;
-}
-
-.deal-details-sheet__timeline-empty {
-  margin: 0;
-  font-size: 13px;
-  color: #718096;
+.deal-details-sheet__comment-box-actions .deal-details-sheet__close-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @media (max-width: 1200px) {

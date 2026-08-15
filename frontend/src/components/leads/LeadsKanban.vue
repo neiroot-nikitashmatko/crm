@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
-import { BanOutline, TrashOutline } from '@vicons/ionicons5'
+import { AttachOutline, BanOutline, PaperPlaneOutline, TrashOutline } from '@vicons/ionicons5'
 import { getApiBaseUrl } from '@/api/httpClient'
 import { LeadsApiError } from '@/api/leads'
 import { LEAD_KANBAN_COLUMNS } from '@/constants/leads'
@@ -36,6 +36,7 @@ import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
 import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
+import EntityActivityTimeline from '@/components/common/EntityActivityTimeline.vue'
 import type { ProductRow } from '@/types/productRow'
 import { rowsToDealProducts } from '@/utils/products'
 import {
@@ -93,10 +94,10 @@ const {
   leads,
   addLead,
   moveLeadToColumn,
-  updateLeadComment,
   updateLeadProfile,
   addLeadAttachments,
   removeLeadAttachment,
+  addLeadActivityComment,
   updateLeadPickupDelivery,
   updateLeadProduction,
   loadLeads,
@@ -166,7 +167,7 @@ const leadProfileDrafts = reactive<
 const currentLeadComment = computed({
   get: () => {
     if (!selectedLead.value) return ''
-    return leadCommentDrafts[selectedLead.value.id] ?? selectedLead.value.leadComments ?? ''
+    return leadCommentDrafts[selectedLead.value.id] ?? ''
   },
   set: (value: string) => {
     if (!selectedLead.value) return
@@ -1096,7 +1097,9 @@ async function persistLeadPickupDelivery() {
 }
 
 function syncLeadCommentDraft(lead: Lead) {
-  leadCommentDrafts[lead.id] = lead.leadComments ?? ''
+  if (leadCommentDrafts[lead.id] === undefined) {
+    leadCommentDrafts[lead.id] = ''
+  }
 }
 
 function syncLeadProfileDraft(lead: Lead) {
@@ -1170,19 +1173,17 @@ async function persistLeadProfile() {
   }
 }
 
-async function persistLeadComment() {
+async function sendLeadComment() {
   if (!selectedLead.value) return
 
-  const draft = leadCommentDrafts[selectedLead.value.id] ?? ''
-  if (draft === selectedLead.value.leadComments) {
-    return
-  }
+  const text = currentLeadComment.value.trim()
+  if (!text) return
 
-  selectedLead.value.leadComments = draft
   try {
-    await updateLeadComment(selectedLead.value.id, draft)
+    await addLeadActivityComment(selectedLead.value.id, text)
+    currentLeadComment.value = ''
   } catch (error) {
-    console.error('Не удалось сохранить комментарий лида', error)
+    console.error('Не удалось добавить комментарий лида', error)
   }
 }
 
@@ -1616,15 +1617,38 @@ async function removeLeadAttachmentFile(attachmentId: string) {
                   v-model="currentLeadComment"
                   class="lead-details-sheet__comment-area"
                   rows="4"
-                  placeholder="Комментарий менеджера по разговору с клиентом"
-                  @blur="persistLeadComment"
+                  placeholder="Напишите комментарий..."
                 />
 
                 <div class="lead-details-sheet__comment-box-foot">
-                  <input id="lead-attachment-input" type="file" class="lead-details-sheet__file-input" multiple @change="handleLeadAttachmentChange" />
-                  <button type="button" class="lead-details-sheet__attachment-btn" @click="triggerLeadAttachmentPick">
-                    Прикрепить файл
-                  </button>
+                  <input
+                    id="lead-attachment-input"
+                    type="file"
+                    class="lead-details-sheet__file-input"
+                    multiple
+                    @change="handleLeadAttachmentChange"
+                  />
+                  <div class="lead-details-sheet__comment-box-actions">
+                    <button
+                      type="button"
+                      class="lead-details-sheet__close-btn"
+                      title="Прикрепить файл"
+                      aria-label="Прикрепить файл"
+                      @click="triggerLeadAttachmentPick"
+                    >
+                      <NIcon :size="16" :component="AttachOutline" />
+                    </button>
+                    <button
+                      type="button"
+                      class="lead-details-sheet__close-btn"
+                      title="Отправить комментарий"
+                      aria-label="Отправить комментарий"
+                      :disabled="!currentLeadComment.trim()"
+                      @click="sendLeadComment"
+                    >
+                      <NIcon :size="16" :component="PaperPlaneOutline" />
+                    </button>
+                  </div>
 
                   <EntityAttachmentList
                     :attachments="selectedLead.attachments"
@@ -1636,26 +1660,7 @@ async function removeLeadAttachmentFile(attachmentId: string) {
 
             <section class="lead-details-sheet__side-block lead-details-sheet__side-block--timeline">
               <h3 class="lead-details-sheet__side-title">Таймлайн</h3>
-
-              <ul v-if="sortedLeadActivities.length > 0" class="lead-details-sheet__timeline">
-                <li
-                  v-for="entry in sortedLeadActivities"
-                  :key="entry.id"
-                  class="lead-details-sheet__timeline-entry"
-                  :class="{
-                    'lead-details-sheet__timeline-entry--comment': entry.type === 'comment',
-                    'lead-details-sheet__timeline-entry--system': entry.type === 'system',
-                  }"
-                >
-                  <div class="lead-details-sheet__timeline-entry-body">
-                    <p class="lead-details-sheet__timeline-text">{{ entry.text }}</p>
-                    <p class="lead-details-sheet__timeline-meta">
-                      {{ formatDateTime(entry.createdAt) }}
-                    </p>
-                  </div>
-                </li>
-              </ul>
-              <p v-else class="lead-details-sheet__timeline-empty">Таймлайн пока пуст</p>
+              <EntityActivityTimeline :activities="sortedLeadActivities" />
             </section>
           </aside>
         </div>
@@ -2552,93 +2557,15 @@ async function removeLeadAttachmentFile(attachmentId: string) {
   display: none;
 }
 
-.lead-details-sheet__attachment-btn {
-  align-self: flex-start;
-  padding: 8px 12px;
-  border: 1px solid #d1d9e2;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #4a5568;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.lead-details-sheet__attachment-btn:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #1a202c;
-}
-
-.lead-details-sheet__timeline {
-  margin: 0;
-  padding: 4px 0 0 14px;
-  list-style: none;
+.lead-details-sheet__comment-box-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-left: 1px solid #e2e8f0;
+  align-items: center;
+  gap: 8px;
 }
 
-.lead-details-sheet__timeline-entry {
-  position: relative;
-  padding: 0 0 14px 12px;
-}
-
-.lead-details-sheet__timeline-entry::before {
-  content: '';
-  position: absolute;
-  left: -18px;
-  top: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  box-shadow: 0 0 0 3px #ffffff;
-}
-
-.lead-details-sheet__timeline-entry--comment::before {
-  background: #1f883d;
-  box-shadow: 0 0 0 3px rgba(31, 136, 61, 0.14);
-}
-
-.lead-details-sheet__timeline-entry--system::before {
-  background: #cbd5e1;
-}
-
-.lead-details-sheet__timeline-entry-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.lead-details-sheet__timeline-text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #1a202c;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.lead-details-sheet__timeline-entry--system .lead-details-sheet__timeline-text {
-  color: #4a5568;
-}
-
-.lead-details-sheet__timeline-meta {
-  margin: 0;
-  font-size: 12px;
-  color: #718096;
-}
-
-.lead-details-sheet__timeline-empty {
-  margin: 0;
-  font-size: 13px;
-  color: #718096;
+.lead-details-sheet__comment-box-actions .lead-details-sheet__close-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @media (max-width: 1200px) {

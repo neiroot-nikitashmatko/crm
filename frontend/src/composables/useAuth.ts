@@ -7,6 +7,7 @@ import {
   type AuthUser,
 } from '@/api/auth'
 import { getAuthToken, getAuthUserRaw } from '@/api/session'
+import { isHeadEmployeePosition } from '@/constants/employees'
 
 const user = ref<AuthUser | null>(null)
 
@@ -74,7 +75,9 @@ export function useAuth() {
   }
 
   const isAuthenticated = computed(() => user.value !== null && Boolean(getAuthToken()))
-  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isAdmin = computed(
+    () => user.value?.role === 'admin' || isHeadEmployeePosition(user.value?.position),
+  )
   const rawPosition = computed(() => user.value?.position?.trim() ?? '')
   const position = computed(() => normalizePosition(user.value?.position))
 

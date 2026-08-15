@@ -13,6 +13,7 @@ type Activity struct {
 	ID        string `json:"id"`
 	Type      string `json:"type"`
 	Author    string `json:"author"`
+	AuthorID  string `json:"authorId,omitempty"`
 	Text      string `json:"text"`
 	CreatedAt int64  `json:"createdAt"`
 }

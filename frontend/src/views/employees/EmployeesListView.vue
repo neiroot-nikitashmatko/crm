@@ -4,13 +4,14 @@ import { NIcon } from 'naive-ui'
 import { PencilOutline, TrashOutline } from '@vicons/ionicons5'
 import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
+import EmployeeAvatar from '@/components/employees/EmployeeAvatar.vue'
 import EmployeeDetailsSheet from '@/components/employees/EmployeeDetailsSheet.vue'
-import { getEmployeeRoleLabel } from '@/constants/employees'
+import { getEmployeeInitials, getEmployeeRoleLabel } from '@/constants/employees'
 import { useEmployees } from '@/composables/useEmployees'
 import { UsersApiError } from '@/api/users'
 import type { Employee } from '@/types/employee'
 
-const { employees, isLoading, loadEmployees, removeEmployee } = useEmployees()
+const { employees, avatarUrls, isLoading, loadEmployees, removeEmployee } = useEmployees()
 
 const selectedEmployee = ref<Employee | null>(null)
 const isDetailsOpen = ref(false)
@@ -108,6 +109,11 @@ onMounted(async () => {
     <section v-else class="employees-list-view__table-wrap">
       <div class="employees-list-view__table" role="table">
         <div class="employees-list-view__table-row employees-list-view__table-row--head" role="row">
+          <span
+            class="employees-list-view__cell employees-list-view__cell--head employees-list-view__cell--avatar"
+            role="columnheader"
+            aria-label="Фото"
+          />
           <span class="employees-list-view__cell employees-list-view__cell--head" role="columnheader">Имя</span>
           <span class="employees-list-view__cell employees-list-view__cell--head" role="columnheader">Фамилия</span>
           <span class="employees-list-view__cell employees-list-view__cell--head" role="columnheader">Отчество</span>
@@ -133,6 +139,13 @@ onMounted(async () => {
           class="employees-list-view__table-row"
           role="row"
         >
+          <span class="employees-list-view__cell employees-list-view__cell--avatar">
+            <EmployeeAvatar
+              :src="avatarUrls[employee.id]"
+              :initials="getEmployeeInitials(employee)"
+              :size="40"
+            />
+          </span>
           <span class="employees-list-view__cell employees-list-view__cell--name">{{ employee.firstName }}</span>
           <span class="employees-list-view__cell employees-list-view__cell--name">{{ employee.lastName }}</span>
           <span class="employees-list-view__cell employees-list-view__cell--name">{{ employee.patronymic }}</span>
@@ -281,6 +294,7 @@ onMounted(async () => {
   display: grid;
   width: 100%;
   grid-template-columns:
+    56px
     minmax(max-content, 1fr)
     minmax(max-content, 1fr)
     minmax(max-content, 1fr)
@@ -320,7 +334,7 @@ onMounted(async () => {
   letter-spacing: 0.04em;
 }
 
-.employees-list-view__table-row .employees-list-view__cell:nth-child(7) {
+.employees-list-view__table-row .employees-list-view__cell:nth-child(8) {
   border-right: 0;
 }
 
@@ -330,6 +344,11 @@ onMounted(async () => {
 
 .employees-list-view__cell--name {
   white-space: nowrap;
+}
+
+.employees-list-view__cell--avatar {
+  justify-content: center;
+  padding: 4px 8px;
 }
 
 .employees-list-view__cell--compact {

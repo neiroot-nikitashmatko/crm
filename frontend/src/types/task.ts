@@ -8,6 +8,7 @@ export interface TaskActivityEntry {
   id: string
   type: TaskActivityType
   author: string
+  authorId: string
   text: string
   createdAt: Date
 }

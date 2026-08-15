@@ -12,6 +12,7 @@ import {
   updateDealStatus as updateDealStatusRequest,
 } from '@/api/deals'
 import { deleteAttachment, uploadDealAttachments } from '@/api/attachments'
+import { createDealComment } from '@/api/activities'
 import type { Deal, DealAttachment, DealKanbanColumnId, DealProduct, PickupDelivery } from '@/types/deal'
 import { normalizeStoredActivity, normalizeStoredAttachment, type StoredActivity } from '@/types/attachment'
 import type { Lead } from '@/types/lead'
@@ -278,6 +279,12 @@ export function useDeals() {
     deals.value = deals.value.filter((item) => item.id !== dealId)
   }
 
+  async function addDealActivityComment(dealId: string, text: string): Promise<StoredActivity> {
+    const activity = await createDealComment(dealId, text)
+    prependDealActivity(dealId, activity)
+    return activity
+  }
+
   async function addDealAttachments(dealId: string, files: File[]): Promise<DealAttachment[]> {
     const { items, activity } = await uploadDealAttachments(dealId, files)
     deals.value = deals.value.map((item) =>
@@ -314,6 +321,7 @@ export function useDeals() {
     updateDealStatus,
     deleteDeal,
     addDealAttachments,
+    addDealActivityComment,
     removeDealAttachment,
   }
 }

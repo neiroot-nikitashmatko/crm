@@ -1,5 +1,5 @@
 import type { CreateEmployeeInput, Employee, EmployeeRole, UpdateEmployeeInput } from '@/types/employee'
-import { ApiError, requestJson } from '@/api/httpClient'
+import { ApiError, requestBlob, requestJson, uploadMultipart } from '@/api/httpClient'
 
 interface UsersListResponse {
   items: Employee[]
@@ -26,6 +26,7 @@ function normalizeEmployee(raw: Employee): Employee {
     role: raw.role === 'admin' ? 'admin' : 'manager',
     position: String(raw.position ?? ''),
     birthDate: raw.birthDate ?? null,
+    hasAvatar: Boolean(raw.hasAvatar),
     isActive: Boolean(raw.isActive ?? true),
     createdAt: Number(raw.createdAt ?? Date.now()),
     updatedAt: Number(raw.updatedAt ?? Date.now()),
@@ -63,6 +64,35 @@ export async function createEmployee(payload: CreateEmployeeInput): Promise<Empl
     body: JSON.stringify(payload),
   })
   return normalizeEmployee(response.item)
+}
+
+export async function uploadEmployeeAvatar(employeeId: string, file: File): Promise<Employee> {
+  try {
+    const payload = await uploadMultipart<UserItemResponse>(`/api/v1/users/${employeeId}/avatar`, [file])
+    return normalizeEmployee(payload.item)
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw new UsersApiError(error.message, error.status)
+    }
+    throw error
+  }
+}
+
+export async function fetchEmployeeAvatarBlob(employeeId: string): Promise<Blob> {
+  try {
+    return await requestBlob(`/api/v1/users/${employeeId}/avatar`, { cache: 'no-store' })
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw new UsersApiError(error.message, error.status)
+    }
+    throw error
+  }
+}
+
+export async function deleteEmployeeAvatar(employeeId: string): Promise<void> {
+  await usersRequestJson<{ ok: boolean }>(`/api/v1/users/${employeeId}/avatar`, {
+    method: 'DELETE',
+  })
 }
 
 export async function deleteEmployee(employeeId: string): Promise<void> {

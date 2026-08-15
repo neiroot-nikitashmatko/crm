@@ -19,6 +19,7 @@ type User struct {
 	Role       string  `json:"role"`
 	Position   string  `json:"position"`
 	BirthDate  *string `json:"birthDate,omitempty"`
+	HasAvatar  bool    `json:"hasAvatar"`
 	IsActive   bool    `json:"isActive"`
 	CreatedAt  int64   `json:"createdAt"`
 	UpdatedAt  int64   `json:"updatedAt"`

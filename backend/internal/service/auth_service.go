@@ -23,5 +23,10 @@ func (s *AuthService) Login(ctx context.Context, phone string, password string) 
 	if phone == "" || password == "" {
 		return nil, errors.New("phone and password are required")
 	}
-	return s.repo.FindByCredentials(ctx, phone, password)
+	user, err := s.repo.FindByCredentials(ctx, phone, password)
+	if err != nil {
+		return nil, err
+	}
+	user.Role = applyFullAccessRole(user.Role, user.Position)
+	return user, nil
 }

@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { NDatePicker, NInput, NSelect } from 'naive-ui'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { CameraOutline, PencilOutline } from '@vicons/ionicons5'
+import { NDatePicker, NIcon, NInput, NSelect } from 'naive-ui'
 import AppBottomSheet from '@/components/common/AppBottomSheet.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
-import { birthDateFromTimestamp, birthDateToTimestamp, UsersApiError } from '@/api/users'
+import EmployeeAvatarCropModal from '@/components/employees/EmployeeAvatarCropModal.vue'
+import { birthDateFromTimestamp, birthDateToTimestamp, fetchEmployeeAvatarBlob, UsersApiError } from '@/api/users'
 import { useEmployees } from '@/composables/useEmployees'
 import {
   EMPLOYEE_POSITION_OPTIONS,
   EMPLOYEE_ROLE_OPTIONS,
+  isHeadEmployeePosition,
   normalizeEmployeePosition,
+  roleForEmployeePosition,
 } from '@/constants/employees'
 import type { Employee, EmployeePosition, EmployeeRole } from '@/types/employee'
 import { isPhoneFilled, normalizePhone } from '@/utils/phone'
@@ -27,6 +31,17 @@ const emit = defineEmits<{
 const { editEmployee } = useEmployees()
 const isSubmitting = ref(false)
 const errorMessage = ref('')
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarFile = ref<File | null>(null)
+const avatarRemoved = ref(false)
+const avatarPreviewUrl = ref('')
+const cropSourceUrl = ref('')
+const isCropOpen = ref(false)
+const cropOpenedFromExisting = ref(false)
+let avatarLoadToken = 0
+
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024
+const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 const fieldInputTheme = {
   border: '1px solid #cbd5e1',
@@ -72,6 +87,9 @@ const employeeForm = reactive({
   role: null as EmployeeRole | null,
 })
 
+const isHeadPosition = computed(() => isHeadEmployeePosition(employeeForm.position))
+const selectedRole = computed(() => roleForEmployeePosition(employeeForm.position, employeeForm.role))
+
 const canSubmit = computed(
   () =>
     employeeForm.firstName.trim().length > 0 &&
@@ -80,7 +98,18 @@ const canSubmit = computed(
     employeeForm.birthDate !== null &&
     isPhoneFilled(employeeForm.phone) &&
     employeeForm.position !== null &&
-    employeeForm.role !== null,
+    selectedRole.value !== null,
+)
+
+const avatarInitials = computed(() => {
+  const last = employeeForm.lastName.trim().charAt(0)
+  const first = employeeForm.firstName.trim().charAt(0)
+  return `${last}${first}`.toUpperCase()
+})
+
+const cropImageUrl = computed(() => cropSourceUrl.value || avatarPreviewUrl.value)
+const cropModalTitle = computed(() =>
+  cropOpenedFromExisting.value ? 'Изменить фото профиля' : 'Выберите миниатюру',
 )
 
 function fillFormFromEmployee(employee: Employee) {
@@ -91,8 +120,117 @@ function fillFormFromEmployee(employee: Employee) {
   employeeForm.phone = employee.phone
   employeeForm.password = ''
   employeeForm.position = normalizeEmployeePosition(employee.position)
-  employeeForm.role = employee.role
+  employeeForm.role = roleForEmployeePosition(employeeForm.position, employee.role)
   errorMessage.value = ''
+  void loadExistingAvatar(employee)
+}
+
+function revokeAvatarPreview() {
+  if (!avatarPreviewUrl.value) return
+  URL.revokeObjectURL(avatarPreviewUrl.value)
+  avatarPreviewUrl.value = ''
+}
+
+function revokeCropSource() {
+  if (!cropSourceUrl.value) return
+  URL.revokeObjectURL(cropSourceUrl.value)
+  cropSourceUrl.value = ''
+}
+
+function resetAvatarState() {
+  avatarLoadToken += 1
+  revokeAvatarPreview()
+  revokeCropSource()
+  avatarFile.value = null
+  avatarRemoved.value = false
+  cropOpenedFromExisting.value = false
+  isCropOpen.value = false
+  if (avatarInput.value) avatarInput.value.value = ''
+}
+
+async function loadExistingAvatar(employee: Employee) {
+  const token = ++avatarLoadToken
+  revokeAvatarPreview()
+  revokeCropSource()
+  avatarFile.value = null
+  avatarRemoved.value = false
+  cropOpenedFromExisting.value = false
+  isCropOpen.value = false
+  if (avatarInput.value) avatarInput.value.value = ''
+  if (!employee.hasAvatar) return
+
+  try {
+    const blob = await fetchEmployeeAvatarBlob(employee.id)
+    if (token !== avatarLoadToken) return
+    avatarPreviewUrl.value = URL.createObjectURL(blob)
+  } catch {
+    if (token !== avatarLoadToken) return
+  }
+}
+
+function triggerAvatarPick() {
+  avatarInput.value?.click()
+}
+
+function handleAvatarButtonClick() {
+  if (avatarPreviewUrl.value) {
+    cropOpenedFromExisting.value = true
+    isCropOpen.value = true
+    return
+  }
+  triggerAvatarPick()
+}
+
+function handleAvatarChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  if (!AVATAR_MIME_TYPES.includes(file.type) || file.size > AVATAR_MAX_BYTES) {
+    errorMessage.value = 'Нужно фото JPEG, PNG или WebP до 2 МБ'
+    input.value = ''
+    return
+  }
+
+  errorMessage.value = ''
+  if (!isCropOpen.value) {
+    cropOpenedFromExisting.value = false
+  }
+  revokeCropSource()
+  cropSourceUrl.value = URL.createObjectURL(file)
+  isCropOpen.value = true
+  input.value = ''
+}
+
+function handleCropConfirm(file: File) {
+  const previousPreview = avatarPreviewUrl.value
+  avatarFile.value = file
+  avatarRemoved.value = false
+  avatarPreviewUrl.value = URL.createObjectURL(file)
+  cropOpenedFromExisting.value = false
+
+  if (previousPreview && previousPreview !== avatarPreviewUrl.value) {
+    window.setTimeout(() => URL.revokeObjectURL(previousPreview), 400)
+  }
+}
+
+function handleCropReplace() {
+  triggerAvatarPick()
+}
+
+function handleCropClose() {
+  cropOpenedFromExisting.value = false
+  const url = cropSourceUrl.value
+  if (!url) return
+  window.setTimeout(() => {
+    if (cropSourceUrl.value === url) revokeCropSource()
+  }, 400)
+}
+
+function handlePositionUpdate(value: EmployeePosition | null) {
+  if (isHeadEmployeePosition(value)) {
+    employeeForm.role = 'admin'
+  }
 }
 
 function handlePhoneInput(value: string) {
@@ -100,13 +238,13 @@ function handlePhoneInput(value: string) {
 }
 
 function handleSubmit() {
-  if (!canSubmit.value || isSubmitting.value || employeeForm.role === null || employeeForm.position === null) return
+  if (!canSubmit.value || isSubmitting.value || employeeForm.position === null || selectedRole.value === null) return
 
   void submitEmployee()
 }
 
 async function submitEmployee() {
-  if (employeeForm.role === null || employeeForm.position === null) return
+  if (employeeForm.position === null || selectedRole.value === null) return
 
   isSubmitting.value = true
   errorMessage.value = ''
@@ -127,7 +265,10 @@ async function submitEmployee() {
       phone: employeeForm.phone.trim(),
       password: employeeForm.password,
       position: employeeForm.position,
-      role: employeeForm.role,
+      role: selectedRole.value,
+    }, {
+      file: avatarFile.value,
+      remove: avatarRemoved.value && !avatarFile.value,
     })
     emit('saved', updated)
     show.value = false
@@ -149,10 +290,16 @@ watch(
   ([isOpen, employee]) => {
     if (isOpen) {
       fillFormFromEmployee(employee)
+      return
     }
+    resetAvatarState()
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => {
+  resetAvatarState()
+})
 </script>
 
 <template>
@@ -164,6 +311,57 @@ watch(
     @close="emit('close')"
   >
     <form class="employee-edit-form" @submit.prevent="handleSubmit">
+      <div class="employee-edit-form__avatar">
+        <input
+          ref="avatarInput"
+          type="file"
+          class="employee-edit-form__avatar-input"
+          accept="image/jpeg,image/png,image/webp"
+          @change="handleAvatarChange"
+        />
+        <button
+          type="button"
+          class="employee-edit-form__avatar-button"
+          :title="avatarPreviewUrl ? 'Изменить фото профиля' : 'Загрузить фото'"
+          :aria-label="avatarPreviewUrl ? 'Изменить фото профиля сотрудника' : 'Загрузить фото сотрудника'"
+          @click="handleAvatarButtonClick"
+        >
+          <img
+            v-if="avatarPreviewUrl"
+            class="employee-edit-form__avatar-image"
+            :src="avatarPreviewUrl"
+            alt=""
+          />
+          <span v-else-if="avatarInitials" class="employee-edit-form__avatar-fallback">
+            {{ avatarInitials }}
+          </span>
+          <NIcon v-else class="employee-edit-form__avatar-icon" :size="20" :component="CameraOutline" />
+        </button>
+        <button
+          v-if="avatarPreviewUrl"
+          type="button"
+          class="employee-edit-form__avatar-edit"
+          title="Изменить фото профиля"
+          aria-label="Изменить фото профиля"
+          @click="handleAvatarButtonClick"
+        >
+          <NIcon :size="14" :component="PencilOutline" />
+        </button>
+        <p class="employee-edit-form__avatar-hint">
+          {{ avatarPreviewUrl ? 'Нажмите, чтобы изменить фото профиля' : 'Нажмите, чтобы загрузить фото' }}
+        </p>
+      </div>
+
+      <EmployeeAvatarCropModal
+        v-model:show="isCropOpen"
+        :image-url="cropImageUrl"
+        :title="cropModalTitle"
+        can-replace
+        @confirm="handleCropConfirm"
+        @replace="handleCropReplace"
+        @close="handleCropClose"
+      />
+
       <div class="employee-edit-form__columns">
         <section class="employee-edit-form__section">
           <h3 class="employee-edit-form__section-title">Личные данные</h3>
@@ -269,10 +467,15 @@ watch(
               :theme-overrides="fieldSelectTheme"
               :options="EMPLOYEE_POSITION_OPTIONS"
               placeholder="Выберите должность"
+              @update:value="handlePositionUpdate"
             />
           </label>
 
-          <label class="employee-edit-form__field">
+          <p v-if="isHeadPosition" class="employee-edit-form__access-hint">
+            Руководителю доступны все разделы системы
+          </p>
+
+          <label v-else class="employee-edit-form__field">
             <span class="employee-edit-form__label">
               Роль
               <span class="employee-edit-form__required" aria-hidden="true">*</span>
@@ -305,10 +508,95 @@ watch(
 .employee-edit-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   width: 100%;
   max-width: 880px;
   margin: 0 auto;
+}
+
+.employee-edit-form__avatar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.employee-edit-form__avatar-input {
+  display: none;
+}
+
+.employee-edit-form__avatar-button {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f6f8fa;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.employee-edit-form__avatar-button:hover {
+  border-color: #cbd5e1;
+  background: #eef2f6;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.employee-edit-form__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.employee-edit-form__avatar-fallback {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #4a5568;
+  line-height: 1;
+}
+
+.employee-edit-form__avatar-icon {
+  color: #64748b;
+}
+
+.employee-edit-form__avatar-edit {
+  position: absolute;
+  top: 0;
+  right: calc(50% - 40px);
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.employee-edit-form__avatar-edit:hover {
+  border-color: #cbd5e1;
+  color: #1a202c;
+}
+
+.employee-edit-form__avatar-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #718096;
+  text-align: center;
 }
 
 .employee-edit-form__columns {
@@ -367,6 +655,13 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.employee-edit-form__access-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1f883d;
 }
 
 .employee-edit-form__label {

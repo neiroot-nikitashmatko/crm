@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"proclients/backend/internal/repository"
 )
 
+const maxUserAvatarBytes = 2 << 20
+
 var (
 	phonePattern = regexp.MustCompile(`^\+[1-9][0-9]{10,14}$`)
 	validRoles   = map[string]struct{}{
@@ -18,8 +21,9 @@ var (
 		"manager": {},
 	}
 	validPositions = map[string]struct{}{
-		"Менеджер": {},
-		"Мастер":   {},
+		"Менеджер":     {},
+		"Мастер":       {},
+		"Руководитель": {},
 	}
 )
 
@@ -73,6 +77,65 @@ func (s *UserService) Create(ctx context.Context, input model.CreateUserInput) (
 	return s.repo.Create(ctx, normalized)
 }
 
+func (s *UserService) GetAvatar(ctx context.Context, id string) ([]byte, string, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, "", errors.New("invalid user id")
+	}
+	return s.repo.GetAvatar(ctx, id)
+}
+
+func (s *UserService) SetAvatar(ctx context.Context, id string, content []byte, mimeType string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return errors.New("invalid user id")
+	}
+	if len(content) == 0 {
+		return errors.New("файл пустой")
+	}
+	if len(content) > maxUserAvatarBytes {
+		return errors.New("фото больше 2 МБ")
+	}
+
+	detected := http.DetectContentType(content)
+	if !isAllowedAvatarMIME(detected) && !isAllowedAvatarMIME(mimeType) {
+		return errors.New("нужен файл JPEG, PNG или WebP")
+	}
+	if !isAllowedAvatarMIME(detected) {
+		detected = strings.TrimSpace(mimeType)
+	}
+
+	return s.repo.SetAvatar(ctx, id, content, detected)
+}
+
+func (s *UserService) ClearAvatar(ctx context.Context, id string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return errors.New("invalid user id")
+	}
+	return s.repo.ClearAvatar(ctx, id)
+}
+
+func grantsFullAccess(position string) bool {
+	return strings.EqualFold(strings.TrimSpace(position), "Руководитель")
+}
+
+func applyFullAccessRole(role string, position string) string {
+	if grantsFullAccess(position) {
+		return "admin"
+	}
+	return role
+}
+
+func isAllowedAvatarMIME(mimeType string) bool {
+	switch strings.ToLower(strings.TrimSpace(mimeType)) {
+	case "image/jpeg", "image/png", "image/webp":
+		return true
+	default:
+		return false
+	}
+}
+
 func normalizeCreateUserInput(input model.CreateUserInput) (model.CreateUserInput, error) {
 	input.FirstName = strings.TrimSpace(input.FirstName)
 	input.LastName = strings.TrimSpace(input.LastName)
@@ -97,6 +160,7 @@ func normalizeCreateUserInput(input model.CreateUserInput) (model.CreateUserInpu
 	if _, ok := validPositions[input.Position]; !ok {
 		return model.CreateUserInput{}, errors.New("некорректная должность")
 	}
+	input.Role = applyFullAccessRole(input.Role, input.Position)
 	if input.Phone == "" || !phonePattern.MatchString(input.Phone) {
 		return model.CreateUserInput{}, errors.New("некорректный телефон")
 	}
@@ -152,6 +216,7 @@ func normalizeUpdateUserInput(input model.UpdateUserInput) (model.UpdateUserInpu
 	if _, ok := validPositions[input.Position]; !ok {
 		return model.UpdateUserInput{}, false, errors.New("некорректная должность")
 	}
+	input.Role = applyFullAccessRole(input.Role, input.Position)
 	if input.Phone == "" || !phonePattern.MatchString(input.Phone) {
 		return model.UpdateUserInput{}, false, errors.New("некорректный телефон")
 	}

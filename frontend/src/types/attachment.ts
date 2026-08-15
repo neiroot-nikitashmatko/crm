@@ -11,6 +11,7 @@ export interface StoredActivity {
   id: string
   type: 'system' | 'comment'
   author: string
+  authorId: string
   text: string
   createdAt: number
 }
@@ -34,6 +35,7 @@ export function normalizeStoredActivity(raw: unknown, fallbackAuthor = ''): Stor
     id: String(item?.id ?? ''),
     type,
     author: String(item?.author ?? fallbackAuthor),
+    authorId: String(item?.authorId ?? item?.author_id ?? ''),
     text: String(item?.text ?? ''),
     createdAt: Number(item?.createdAt ?? item?.created_at ?? Date.now()),
   }

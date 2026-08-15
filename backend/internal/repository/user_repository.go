@@ -12,6 +12,22 @@ import (
 )
 
 var ErrUserNotFound = errors.New("user not found")
+var ErrUserAvatarNotFound = errors.New("user avatar not found")
+
+const userSelectSQL = `
+  id::text,
+  COALESCE(first_name, ''),
+  COALESCE(last_name, ''),
+  COALESCE(patronymic, ''),
+  phone,
+  role::text,
+  COALESCE(position, ''),
+  birth_date,
+  is_active,
+  created_at,
+  updated_at,
+  (avatar IS NOT NULL AND octet_length(avatar) > 0)
+`
 
 type UserRepository struct {
 	db *pgxpool.Pool
@@ -55,18 +71,7 @@ LIMIT 1
 
 func (r *UserRepository) List(ctx context.Context) ([]model.User, error) {
 	const query = `
-SELECT
-  id::text,
-  COALESCE(first_name, ''),
-  COALESCE(last_name, ''),
-  COALESCE(patronymic, ''),
-  phone,
-  role::text,
-  COALESCE(position, ''),
-  birth_date,
-  is_active,
-  created_at,
-  updated_at
+SELECT` + userSelectSQL + `
 FROM users
 WHERE is_active = true
 ORDER BY last_name ASC, first_name ASC, patronymic ASC
@@ -90,18 +95,7 @@ ORDER BY last_name ASC, first_name ASC, patronymic ASC
 
 func (r *UserRepository) FindByID(ctx context.Context, id string) (model.User, error) {
 	const query = `
-SELECT
-  id::text,
-  COALESCE(first_name, ''),
-  COALESCE(last_name, ''),
-  COALESCE(patronymic, ''),
-  phone,
-  role::text,
-  COALESCE(position, ''),
-  birth_date,
-  is_active,
-  created_at,
-  updated_at
+SELECT` + userSelectSQL + `
 FROM users
 WHERE id = $1::uuid
 LIMIT 1
@@ -132,18 +126,7 @@ SET
   updated_at = now()
 WHERE id = $1::uuid
   AND is_active = true
-RETURNING
-  id::text,
-  COALESCE(first_name, ''),
-  COALESCE(last_name, ''),
-  COALESCE(patronymic, ''),
-  phone,
-  role::text,
-  COALESCE(position, ''),
-  birth_date,
-  is_active,
-  created_at,
-  updated_at
+RETURNING` + userSelectSQL + `
 `
 	row := r.db.QueryRow(
 		ctx,
@@ -211,18 +194,7 @@ VALUES (
   $7,
   $8::date
 )
-RETURNING
-  id::text,
-  COALESCE(first_name, ''),
-  COALESCE(last_name, ''),
-  COALESCE(patronymic, ''),
-  phone,
-  role::text,
-  COALESCE(position, ''),
-  birth_date,
-  is_active,
-  created_at,
-  updated_at
+RETURNING` + userSelectSQL + `
 `
 	row := r.db.QueryRow(
 		ctx,
@@ -244,6 +216,65 @@ RETURNING
 		return model.User{}, err
 	}
 	return item, nil
+}
+
+func (r *UserRepository) GetAvatar(ctx context.Context, id string) ([]byte, string, error) {
+	const query = `
+SELECT avatar, COALESCE(avatar_mime_type, '')
+FROM users
+WHERE id = $1::uuid
+  AND is_active = true
+LIMIT 1
+`
+	var content []byte
+	var mimeType string
+	err := r.db.QueryRow(ctx, query, id).Scan(&content, &mimeType)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", ErrUserNotFound
+		}
+		return nil, "", err
+	}
+	if len(content) == 0 {
+		return nil, "", ErrUserAvatarNotFound
+	}
+	return content, mimeType, nil
+}
+
+func (r *UserRepository) SetAvatar(ctx context.Context, id string, content []byte, mimeType string) error {
+	tag, err := r.db.Exec(ctx, `
+UPDATE users
+SET avatar = $2,
+    avatar_mime_type = $3,
+    updated_at = now()
+WHERE id = $1::uuid
+  AND is_active = true
+`, id, content, mimeType)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) ClearAvatar(ctx context.Context, id string) error {
+	tag, err := r.db.Exec(ctx, `
+UPDATE users
+SET avatar = NULL,
+    avatar_mime_type = '',
+    updated_at = now()
+WHERE id = $1::uuid
+  AND is_active = true
+`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
 }
 
 type userScanner interface {
@@ -268,6 +299,7 @@ func scanUser(row userScanner) (model.User, error) {
 		&item.IsActive,
 		&createdAt,
 		&updatedAt,
+		&item.HasAvatar,
 	)
 	if err != nil {
 		return model.User{}, err
