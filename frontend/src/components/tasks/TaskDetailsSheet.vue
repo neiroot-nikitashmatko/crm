@@ -164,13 +164,6 @@ watch(commentDraft, (text) => {
   saveTaskCommentDraft(taskId, text)
 })
 
-function formatDateTime(value: Date | number | null) {
-  if (value === null) return '—'
-  const timestamp = value instanceof Date ? value.getTime() : value
-  if (Number.isNaN(timestamp)) return '—'
-  return new Date(timestamp).toLocaleString('ru-RU')
-}
-
 function openDateModal() {
   syncDrafts()
   const initialValue = dueAtDraft.value ?? Date.now()
