@@ -84,7 +84,7 @@ export function buildTrafficSourceMetrics(
   const counts = new Map(items.map((item) => [item.source, item.count]))
   const knownSources = new Set<string>(ALL_TRAFFIC_SOURCES)
 
-  const metrics = ALL_TRAFFIC_SOURCES.map((source) => ({
+  const metrics: TrafficSourceMetric[] = ALL_TRAFFIC_SOURCES.map((source) => ({
     source,
     count: counts.get(source) ?? 0,
     color: colorForTrafficSource(source),
@@ -130,7 +130,7 @@ export function buildProductionShareMetrics(
   const counts = new Map(items.map((item) => [item.category, item.count]))
   const knownCategories = new Set<string>(PRODUCTION_SHARE_CATEGORIES)
 
-  const metrics = PRODUCTION_SHARE_CATEGORIES.map((category) => ({
+  const metrics: TrafficSourceMetric[] = PRODUCTION_SHARE_CATEGORIES.map((category) => ({
     source: category,
     count: counts.get(category) ?? 0,
     color: PRODUCTION_CATEGORY_COLORS[category] ?? colorForTrafficSource(category),
@@ -173,7 +173,7 @@ export function buildEmployeeShareMetrics(
   const counts = new Map(items.map((item) => [item.employee, item.count]))
   const knownEmployees = new Set<string>(PRODUCTION_EMPLOYEE_NAMES)
 
-  const metrics = PRODUCTION_EMPLOYEE_NAMES.map((employee) => ({
+  const metrics: TrafficSourceMetric[] = PRODUCTION_EMPLOYEE_NAMES.map((employee) => ({
     source: employee,
     count: counts.get(employee) ?? 0,
     color: PRODUCTION_EMPLOYEE_COLORS[employee] ?? colorForTrafficSource(employee),
