@@ -39,14 +39,15 @@ type EmployeeShareMetric struct {
 }
 
 type ClosedDealListItem struct {
-	ID           string `json:"id"`
-	DealNumber   int64  `json:"dealNumber"`
-	FirstName    string `json:"firstName"`
-	Patronymic   string `json:"patronymic"`
-	Phone        string `json:"phone"`
-	Nomenclature string `json:"nomenclature"`
-	Category     string `json:"category"`
-	Employee     string `json:"employee"`
-	CreatedAt    int64  `json:"createdAt"`
-	ClosedAt     int64  `json:"closedAt"`
+	ID            string `json:"id"`
+	DealNumber    int64  `json:"dealNumber"`
+	FirstName     string `json:"firstName"`
+	Patronymic    string `json:"patronymic"`
+	Phone         string `json:"phone"`
+	Nomenclature  string `json:"nomenclature"`
+	Category      string `json:"category"`
+	Employee      string `json:"employee"`
+	FailureReason string `json:"failureReason"`
+	CreatedAt     int64  `json:"createdAt"`
+	ClosedAt      int64  `json:"closedAt"`
 }

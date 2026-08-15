@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { fetchClosedDealsList } from '@/api/analytics'
+import { fetchClosedDealsList, fetchFailedDealsList } from '@/api/analytics'
 import { useAnalyticsPeriodContext } from '@/composables/useAnalyticsPeriod'
 import type { ClosedDealListItem } from '@/types/analytics'
 
@@ -32,10 +32,31 @@ export function useClosedDealsList() {
     }
   }
 
+  async function loadFailedDeals() {
+    const seq = ++requestSeq
+    isLoading.value = true
+    errorMessage.value = ''
+
+    try {
+      const items = await fetchFailedDealsList(selectedRange.value)
+      if (seq !== requestSeq) return
+      deals.value = items
+    } catch {
+      if (seq !== requestSeq) return
+      deals.value = []
+      errorMessage.value = 'Не удалось загрузить список сделок'
+    } finally {
+      if (seq === requestSeq) {
+        isLoading.value = false
+      }
+    }
+  }
+
   return {
     deals,
     isLoading,
     errorMessage,
     loadDeals,
+    loadFailedDeals,
   }
 }

@@ -173,7 +173,28 @@ export async function fetchClosedDealsList(
   )
 
   if (!Array.isArray(payload.items)) return []
-  return payload.items.map((item) => ({
+  return payload.items.map(mapClosedDealListItem)
+}
+
+export async function fetchFailedDealsList(
+  range: AnalyticsDateRange,
+): Promise<ClosedDealListItem[]> {
+  const [from, to] = range
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+  })
+  const payload = await analyticsRequestJson<{ items: ClosedDealListItem[] }>(
+    `/api/v1/analytics/failed-deals?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  if (!Array.isArray(payload.items)) return []
+  return payload.items.map(mapClosedDealListItem)
+}
+
+function mapClosedDealListItem(item: ClosedDealListItem): ClosedDealListItem {
+  return {
     id: String(item.id ?? ''),
     dealNumber: Number(item.dealNumber ?? 0),
     firstName: String(item.firstName ?? ''),
@@ -182,7 +203,8 @@ export async function fetchClosedDealsList(
     nomenclature: String(item.nomenclature ?? ''),
     category: String(item.category ?? ''),
     employee: String(item.employee ?? ''),
+    failureReason: String(item.failureReason ?? ''),
     createdAt: Number(item.createdAt ?? 0),
     closedAt: Number(item.closedAt ?? 0),
-  }))
+  }
 }

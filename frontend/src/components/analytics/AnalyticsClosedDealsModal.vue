@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import AppModal from '@/components/common/AppModal.vue'
 import { PRODUCTION_CATEGORY_COLORS } from '@/constants/analytics'
 import { productionCategoryForNomenclature } from '@/constants/production'
@@ -12,11 +13,11 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('ru-RU', {
 
 const show = defineModel<boolean>('show', { required: true })
 
-defineProps<{
+const props = defineProps<{
   deals: readonly ClosedDealListItem[]
   loading?: boolean
   errorMessage?: string
-  detail?: 'nomenclature' | 'employee'
+  detail?: 'nomenclature' | 'employee' | 'failed'
 }>()
 
 const emit = defineEmits<{
@@ -32,13 +33,38 @@ function formatDealNomenclature(deal: ClosedDealListItem): string {
   return deal.nomenclature.trim() || 'Без номенклатуры'
 }
 
+function formatDealEmployee(deal: ClosedDealListItem): string {
+  return deal.employee.trim() || 'Без сотрудника'
+}
+
 function formatDealCategory(deal: ClosedDealListItem): string {
   return deal.category.trim() || productionCategoryForNomenclature(deal.nomenclature)
 }
 
-function formatDealEmployee(deal: ClosedDealListItem): string {
-  return deal.employee.trim() || 'Без сотрудника'
+function formatDealFailureReason(deal: ClosedDealListItem): string {
+  return deal.failureReason.trim() || 'Без причины'
 }
+
+function formatDealTitle(deal: ClosedDealListItem): string {
+  if (props.detail === 'employee') return formatDealEmployee(deal)
+  if (props.detail === 'failed') return formatDealFailureReason(deal)
+  return formatDealNomenclature(deal)
+}
+
+function formatListDate(deal: ClosedDealListItem): string {
+  if (props.detail === 'failed') return formatDealDate(deal.createdAt)
+  return formatDealDate(deal.closedAt || deal.createdAt)
+}
+
+const modalTitle = computed(() =>
+  props.detail === 'failed' ? 'Проваленные сделки за период' : 'Закрытые сделки за период',
+)
+
+const emptyMessage = computed(() =>
+  props.detail === 'failed'
+    ? 'Нет проваленных сделок за выбранный период'
+    : 'Нет закрытых сделок за выбранный период',
+)
 
 function categoryColor(category: string): string {
   return PRODUCTION_CATEGORY_COLORS[category] ?? '#94a3b8'
@@ -46,11 +72,11 @@ function categoryColor(category: string): string {
 </script>
 
 <template>
-  <AppModal v-model:show="show" title="Закрытые сделки за период" width="wide">
+  <AppModal v-model:show="show" :title="modalTitle" width="wide">
     <p v-if="errorMessage" class="analytics-closed-deals-modal__error">{{ errorMessage }}</p>
     <p v-else-if="loading" class="analytics-closed-deals-modal__empty">Загрузка…</p>
     <p v-else-if="deals.length === 0" class="analytics-closed-deals-modal__empty">
-      Нет закрытых сделок за выбранный период
+      {{ emptyMessage }}
     </p>
     <ul v-else class="analytics-closed-deals-modal__list">
       <li v-for="deal in deals" :key="deal.id">
@@ -62,15 +88,18 @@ function categoryColor(category: string): string {
           <span class="analytics-closed-deals-modal__item-row">
             <span class="analytics-closed-deals-modal__item-number">#{{ deal.dealNumber }}</span>
             <span class="analytics-closed-deals-modal__item-date">
-              {{ formatDealDate(deal.closedAt || deal.createdAt) }}
+              {{ formatListDate(deal) }}
             </span>
           </span>
           <span class="analytics-closed-deals-modal__item-row">
-            <span class="analytics-closed-deals-modal__item-title">
-              {{ detail === 'employee' ? formatDealEmployee(deal) : formatDealNomenclature(deal) }}
+            <span
+              class="analytics-closed-deals-modal__item-title"
+              :class="{ 'analytics-closed-deals-modal__item-title--wrap': detail === 'failed' }"
+            >
+              {{ formatDealTitle(deal) }}
             </span>
             <span
-              v-if="detail !== 'employee'"
+              v-if="detail === 'nomenclature' || !detail"
               class="analytics-closed-deals-modal__category"
               :style="{ '--category-color': categoryColor(formatDealCategory(deal)) }"
             >
@@ -162,6 +191,12 @@ function categoryColor(category: string): string {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.analytics-closed-deals-modal__item-title--wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .analytics-closed-deals-modal__category {

@@ -65,6 +65,7 @@ const {
   isLoading: closedDealsLoading,
   errorMessage: closedDealsError,
   loadDeals: loadClosedDeals,
+  loadFailedDeals,
 } = useClosedDealsList()
 
 const { deals, loadDeals } = useDeals()
@@ -72,7 +73,7 @@ const { deals, loadDeals } = useDeals()
 const isClosedDealsListOpen = ref(false)
 const selectedDealId = ref<string | null>(null)
 const shouldReturnToClosedDealsList = ref(false)
-const closedDealsListDetail = ref<'nomenclature' | 'employee'>('nomenclature')
+const closedDealsListDetail = ref<'nomenclature' | 'employee' | 'failed'>('nomenclature')
 
 const errorMessage = computed(
   () =>
@@ -125,6 +126,12 @@ async function openClosedDealsList(detail: 'nomenclature' | 'employee' = 'nomenc
     requireEmployee: detail === 'employee',
     requireProduction: detail === 'nomenclature',
   })
+}
+
+async function openFailedDealsList() {
+  closedDealsListDetail.value = 'failed'
+  isClosedDealsListOpen.value = true
+  await loadFailedDeals()
 }
 
 async function openClosedDeal(dealId: string) {
@@ -214,7 +221,21 @@ function getDealWord(count: number): string {
         :hint="failedDealHint"
         :loading="failedDealLoading"
         color="#e11d48"
-      />
+      >
+        <template #header-actions>
+          <button
+            type="button"
+            class="analytics-view__icon-action"
+            title="Список сделок"
+            aria-label="Открыть список проваленных сделок"
+            @click="openFailedDealsList"
+          >
+            <NIcon :size="16">
+              <EyeOutline />
+            </NIcon>
+          </button>
+        </template>
+      </AnalyticsKpiCard>
     </div>
 
     <div class="analytics-view__charts">

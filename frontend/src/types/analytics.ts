@@ -46,6 +46,7 @@ export interface ClosedDealListItem {
   nomenclature: string
   category: string
   employee: string
+  failureReason: string
   createdAt: number
   closedAt: number
 }

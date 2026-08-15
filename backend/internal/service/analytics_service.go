@@ -219,3 +219,15 @@ func (s *AnalyticsService) ClosedDealsList(
 	}
 	return items, nil
 }
+
+func (s *AnalyticsService) FailedDealsList(
+	ctx context.Context,
+	fromMs int64,
+	toMs int64,
+) ([]model.ClosedDealListItem, error) {
+	from, to, err := s.parsePeriod(fromMs, toMs)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.ListFailedDeals(ctx, from, to)
+}

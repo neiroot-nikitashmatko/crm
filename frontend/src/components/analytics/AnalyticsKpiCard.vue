@@ -72,12 +72,18 @@ function describeArc(startAngle: number, endAngle: number) {
 </script>
 
 <template>
-  <section class="analytics-kpi-card" :class="{ 'analytics-kpi-card--loading': loading }">
+  <section class="analytics-kpi-card">
     <header class="analytics-kpi-card__header">
       <h2 class="analytics-kpi-card__title">{{ title }}</h2>
+      <div v-if="$slots['header-actions']" class="analytics-kpi-card__header-actions">
+        <slot name="header-actions" />
+      </div>
     </header>
 
-    <div class="analytics-kpi-card__gauge">
+    <div
+      class="analytics-kpi-card__gauge"
+      :class="{ 'analytics-kpi-card__gauge--loading': loading }"
+    >
       <svg
         class="analytics-kpi-card__chart"
         :viewBox="`0 0 ${GAUGE_SIZE} ${GAUGE_VIEW_HEIGHT}`"
@@ -129,22 +135,40 @@ function describeArc(startAngle: number, endAngle: number) {
   box-sizing: border-box;
 }
 
-.analytics-kpi-card--loading {
-  opacity: 0.55;
-  pointer-events: none;
+.analytics-kpi-card__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.analytics-kpi-card__header {
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid #e2e8f0;
+.analytics-kpi-card__header:has(.analytics-kpi-card__header-actions) .analytics-kpi-card__title {
+  padding-right: 42px;
 }
 
 .analytics-kpi-card__title {
   margin: 0;
+  min-width: 0;
+  flex: 1;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.3;
   color: #1a202c;
+}
+
+.analytics-kpi-card__header-actions {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.analytics-kpi-card__gauge--loading {
+  opacity: 0.55;
 }
 
 .analytics-kpi-card__gauge {
