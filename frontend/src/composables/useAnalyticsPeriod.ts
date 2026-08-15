@@ -7,8 +7,8 @@ import {
 import type { AnalyticsDateRange, AnalyticsPeriodPreset } from '@/types/analytics'
 
 export function useAnalyticsPeriod() {
-  const selectedRange = ref<AnalyticsDateRange>(getCurrentMonthDateRange())
-  const selectedPreset = ref<AnalyticsPeriodPreset>('month')
+  const selectedRange = ref<AnalyticsDateRange>(getTodayDateRange())
+  const selectedPreset = ref<AnalyticsPeriodPreset>('today')
 
   const periodLabel = computed(() => {
     if (selectedPreset.value === 'today') return 'За сегодня'

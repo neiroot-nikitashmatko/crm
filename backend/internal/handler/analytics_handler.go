@@ -56,6 +56,13 @@ func (h *AnalyticsHandler) ClosedDealsEmployeeShare(w http.ResponseWriter, r *ht
 	})
 }
 
+func (h *AnalyticsHandler) ClosedDealsList(w http.ResponseWriter, r *http.Request) {
+	requireEmployee := r.URL.Query().Get("requireEmployee") == "1"
+	h.items(w, r, func(ctx context.Context, fromMs int64, toMs int64) (any, error) {
+		return h.service.ClosedDealsList(ctx, fromMs, toMs, requireEmployee)
+	})
+}
+
 func (h *AnalyticsHandler) share(
 	w http.ResponseWriter,
 	r *http.Request,

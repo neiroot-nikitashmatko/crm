@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { NIcon } from 'naive-ui'
+import { EyeOutline } from '@vicons/ionicons5'
+import AnalyticsClosedDealsModal from '@/components/analytics/AnalyticsClosedDealsModal.vue'
 import AnalyticsKpiCard from '@/components/analytics/AnalyticsKpiCard.vue'
 import AnalyticsLeadsTrafficCard from '@/components/analytics/AnalyticsLeadsTrafficCard.vue'
+import DealDetailsSheet from '@/components/deals/DealDetailsSheet.vue'
+import { useClosedDealsList } from '@/composables/useClosedDealsList'
+import { useDeals } from '@/composables/useDeals'
+import { useEmployeeShareAnalytics } from '@/composables/useEmployeeShareAnalytics'
 import { useFailedDealShare } from '@/composables/useFailedDealShare'
 import { useFailedLeadShare } from '@/composables/useFailedLeadShare'
 import { useLeadToDealConversion } from '@/composables/useLeadToDealConversion'
@@ -9,7 +16,6 @@ import {
   useDealTrafficAnalytics,
   useLeadTrafficAnalytics,
 } from '@/composables/useLeadTrafficAnalytics'
-import { useEmployeeShareAnalytics } from '@/composables/useEmployeeShareAnalytics'
 import { useProductionShareAnalytics } from '@/composables/useProductionShareAnalytics'
 
 const {
@@ -54,6 +60,20 @@ const {
   errorMessage: employeeError,
 } = useEmployeeShareAnalytics()
 
+const {
+  deals: closedDeals,
+  isLoading: closedDealsLoading,
+  errorMessage: closedDealsError,
+  loadDeals: loadClosedDeals,
+} = useClosedDealsList()
+
+const { deals, loadDeals } = useDeals()
+
+const isClosedDealsListOpen = ref(false)
+const selectedDealId = ref<string | null>(null)
+const shouldReturnToClosedDealsList = ref(false)
+const closedDealsListDetail = ref<'nomenclature' | 'employee'>('nomenclature')
+
 const errorMessage = computed(
   () =>
     leadsError.value ||
@@ -97,6 +117,37 @@ const failedDealHint = computed(() => {
   if (dealsCount === 0) return 'Нет сделок за выбранный период'
   return `${failedCount} из ${dealsCount} ${getDealWord(dealsCount)}`
 })
+
+async function openClosedDealsList(detail: 'nomenclature' | 'employee' = 'nomenclature') {
+  closedDealsListDetail.value = detail
+  isClosedDealsListOpen.value = true
+  await loadClosedDeals({ requireEmployee: detail === 'employee' })
+}
+
+async function openClosedDeal(dealId: string) {
+  shouldReturnToClosedDealsList.value = true
+  isClosedDealsListOpen.value = false
+
+  if (!deals.value.some((deal) => deal.id === dealId)) {
+    await loadDeals(true)
+  }
+
+  if (deals.value.some((deal) => deal.id === dealId)) {
+    selectedDealId.value = dealId
+    return
+  }
+
+  shouldReturnToClosedDealsList.value = false
+  isClosedDealsListOpen.value = true
+}
+
+function handleCloseDealSheet() {
+  selectedDealId.value = null
+  if (shouldReturnToClosedDealsList.value) {
+    shouldReturnToClosedDealsList.value = false
+    isClosedDealsListOpen.value = true
+  }
+}
 
 function getLeadWord(count: number): string {
   const lastTwoDigits = count % 100
@@ -172,7 +223,21 @@ function getDealWord(count: number): string {
         noun-few="сделки"
         noun-many="сделок"
         legend-aria-label="Категории производства"
-      />
+      >
+        <template #header-actions>
+          <button
+            type="button"
+            class="analytics-view__icon-action"
+            title="Список сделок"
+            aria-label="Открыть список закрытых сделок"
+            @click="openClosedDealsList('nomenclature')"
+          >
+            <NIcon :size="16">
+              <EyeOutline />
+            </NIcon>
+          </button>
+        </template>
+      </AnalyticsLeadsTrafficCard>
       <AnalyticsLeadsTrafficCard
         title="Соотношение участия сотрудника в закрытых сделках"
         :metrics="employeeMetrics"
@@ -181,8 +246,33 @@ function getDealWord(count: number): string {
         noun-few="сделки"
         noun-many="сделок"
         legend-aria-label="Сотрудники производства"
-      />
+      >
+        <template #header-actions>
+          <button
+            type="button"
+            class="analytics-view__icon-action"
+            title="Список сделок"
+            aria-label="Открыть список закрытых сделок"
+            @click="openClosedDealsList('employee')"
+          >
+            <NIcon :size="16">
+              <EyeOutline />
+            </NIcon>
+          </button>
+        </template>
+      </AnalyticsLeadsTrafficCard>
     </div>
+
+    <AnalyticsClosedDealsModal
+      v-model:show="isClosedDealsListOpen"
+      :deals="closedDeals"
+      :loading="closedDealsLoading"
+      :error-message="closedDealsError"
+      :detail="closedDealsListDetail"
+      @select="openClosedDeal"
+    />
+
+    <DealDetailsSheet :deal-id="selectedDealId" @close="handleCloseDealSheet" />
   </div>
 </template>
 
@@ -214,6 +304,28 @@ function getDealWord(count: number): string {
 
 .analytics-view__kpis {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-view__icon-action {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d9e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.analytics-view__icon-action:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 @media (max-width: 960px) {

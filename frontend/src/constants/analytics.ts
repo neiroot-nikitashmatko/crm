@@ -104,7 +104,7 @@ export function buildTrafficSourceMetrics(
 
 export const PRODUCTION_CATEGORY_COLORS: Record<string, string> = {
   Перетяжка: '#d97706',
-  'Установка чехлов': '#0f766e',
+  Установка: '#0f766e',
   Стёкла: '#2563eb',
   Коврики: '#65a30d',
   [PRODUCTION_SHARE_OTHER_CATEGORY]: '#94a3b8',

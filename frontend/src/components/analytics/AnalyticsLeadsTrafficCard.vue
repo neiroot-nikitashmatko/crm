@@ -101,6 +101,9 @@ function getShare(count: number): number {
       <h2 :id="titleId" class="analytics-leads-traffic-card__title">
         {{ title }}
       </h2>
+      <div v-if="$slots['header-actions']" class="analytics-leads-traffic-card__header-actions">
+        <slot name="header-actions" />
+      </div>
     </header>
 
     <div
@@ -190,20 +193,37 @@ function getShare(count: number): number {
 }
 
 .analytics-leads-traffic-card__header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px 8px;
+  gap: 12px;
+  padding: 12px 20px;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.analytics-leads-traffic-card__header:has(.analytics-leads-traffic-card__header-actions) .analytics-leads-traffic-card__title {
+  padding-right: 42px;
 }
 
 .analytics-leads-traffic-card__title {
   margin: 0;
+  min-width: 0;
+  flex: 1;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.35;
   color: #1a202c;
+}
+
+.analytics-leads-traffic-card__header-actions {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  transform: translateY(-50%);
 }
 
 .analytics-leads-traffic-card__body {

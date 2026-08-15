@@ -37,6 +37,18 @@ export interface EmployeeShareCount {
   count: number
 }
 
+export interface ClosedDealListItem {
+  id: string
+  dealNumber: number
+  firstName: string
+  patronymic: string
+  phone: string
+  nomenclature: string
+  category: string
+  employee: string
+  createdAt: number
+}
+
 export type AnalyticsDateRange = [number, number]
 
 export type AnalyticsPeriodPreset = 'today' | 'month' | 'custom'

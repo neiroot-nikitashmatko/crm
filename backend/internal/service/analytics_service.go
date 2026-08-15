@@ -13,8 +13,8 @@ import (
 
 var productionCategoryByNomenclature = map[string]string{
 	"Перетяжка руля":    "Перетяжка",
-	"Установка чехлов":  "Установка чехлов",
-	"Установка накидок": "Установка чехлов",
+	"Установка чехлов":  "Установка",
+	"Установка накидок": "Установка",
 	"Полировка фар":     "Стёкла",
 	"Полировка стёкол":  "Стёкла",
 	"Ремонт стёкол":     "Стёкла",
@@ -23,12 +23,20 @@ var productionCategoryByNomenclature = map[string]string{
 
 var productionShareCategories = []string{
 	"Перетяжка",
-	"Установка чехлов",
+	"Установка",
 	"Стёкла",
 	"Коврики",
 }
 
 const productionShareOtherCategory = "Прочее"
+
+func productionCategoryForNomenclature(nomenclature string) string {
+	trimmed := strings.TrimSpace(nomenclature)
+	if category, ok := productionCategoryByNomenclature[trimmed]; ok {
+		return category
+	}
+	return productionShareOtherCategory
+}
 
 var (
 	ErrAnalyticsPeriodRequired = errors.New("укажите период")
@@ -189,4 +197,24 @@ func (s *AnalyticsService) ClosedDealsEmployeeShare(
 		return nil, err
 	}
 	return s.repo.CountClosedDealsByEmployee(ctx, from, to)
+}
+
+func (s *AnalyticsService) ClosedDealsList(
+	ctx context.Context,
+	fromMs int64,
+	toMs int64,
+	requireEmployee bool,
+) ([]model.ClosedDealListItem, error) {
+	from, to, err := s.parsePeriod(fromMs, toMs)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.repo.ListClosedDeals(ctx, from, to, requireEmployee)
+	if err != nil {
+		return nil, err
+	}
+	for index := range items {
+		items[index].Category = productionCategoryForNomenclature(items[index].Nomenclature)
+	}
+	return items, nil
 }

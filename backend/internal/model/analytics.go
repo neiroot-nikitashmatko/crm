@@ -37,3 +37,15 @@ type EmployeeShareMetric struct {
 	Employee string `json:"employee"`
 	Count    int    `json:"count"`
 }
+
+type ClosedDealListItem struct {
+	ID           string `json:"id"`
+	DealNumber   int64  `json:"dealNumber"`
+	FirstName    string `json:"firstName"`
+	Patronymic   string `json:"patronymic"`
+	Phone        string `json:"phone"`
+	Nomenclature string `json:"nomenclature"`
+	Category     string `json:"category"`
+	Employee     string `json:"employee"`
+	CreatedAt    int64  `json:"createdAt"`
+}

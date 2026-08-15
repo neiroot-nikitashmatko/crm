@@ -1,5 +1,5 @@
 import { ApiError, requestJson } from '@/api/httpClient'
-import type { AnalyticsDateRange, EmployeeShareCount, FailedDealShare, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
+import type { AnalyticsDateRange, ClosedDealListItem, EmployeeShareCount, FailedDealShare, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
 
 interface TrafficSourceResponse {
   items: TrafficSourceCount[]
@@ -149,5 +149,36 @@ export async function fetchClosedDealsEmployeeShare(
   return payload.items.map((item) => ({
     employee: String(item.employee ?? ''),
     count: Number(item.count ?? 0),
+  }))
+}
+
+export async function fetchClosedDealsList(
+  range: AnalyticsDateRange,
+  options?: { requireEmployee?: boolean },
+): Promise<ClosedDealListItem[]> {
+  const [from, to] = range
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+  })
+  if (options?.requireEmployee) {
+    params.set('requireEmployee', '1')
+  }
+  const payload = await analyticsRequestJson<{ items: ClosedDealListItem[] }>(
+    `/api/v1/analytics/closed-deals?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  if (!Array.isArray(payload.items)) return []
+  return payload.items.map((item) => ({
+    id: String(item.id ?? ''),
+    dealNumber: Number(item.dealNumber ?? 0),
+    firstName: String(item.firstName ?? ''),
+    patronymic: String(item.patronymic ?? ''),
+    phone: String(item.phone ?? ''),
+    nomenclature: String(item.nomenclature ?? ''),
+    category: String(item.category ?? ''),
+    employee: String(item.employee ?? ''),
+    createdAt: Number(item.createdAt ?? 0),
   }))
 }
