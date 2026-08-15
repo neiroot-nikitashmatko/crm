@@ -154,7 +154,7 @@ export async function fetchClosedDealsEmployeeShare(
 
 export async function fetchClosedDealsList(
   range: AnalyticsDateRange,
-  options?: { requireEmployee?: boolean },
+  options?: { requireEmployee?: boolean; requireProduction?: boolean },
 ): Promise<ClosedDealListItem[]> {
   const [from, to] = range
   const params = new URLSearchParams({
@@ -163,6 +163,9 @@ export async function fetchClosedDealsList(
   })
   if (options?.requireEmployee) {
     params.set('requireEmployee', '1')
+  }
+  if (options?.requireProduction) {
+    params.set('requireProduction', '1')
   }
   const payload = await analyticsRequestJson<{ items: ClosedDealListItem[] }>(
     `/api/v1/analytics/closed-deals?${params.toString()}`,

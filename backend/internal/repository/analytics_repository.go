@@ -143,6 +143,8 @@ SELECT
 FROM deals
 WHERE deleted_at IS NULL
   AND status = 'closed'
+  AND BTRIM(production_nomenclature) <> ''
+  AND BTRIM(production_employee) <> ''
   AND created_at >= $1
   AND created_at <= $2
 GROUP BY 1
@@ -213,6 +215,7 @@ func (r *AnalyticsRepository) ListClosedDeals(
 	from time.Time,
 	to time.Time,
 	requireEmployee bool,
+	requireProduction bool,
 ) ([]model.ClosedDealListItem, error) {
 	const query = `
 SELECT
@@ -230,9 +233,16 @@ WHERE deleted_at IS NULL
   AND created_at >= $1
   AND created_at <= $2
   AND ($3::bool = false OR BTRIM(production_employee) <> '')
+  AND (
+    $4::bool = false
+    OR (
+      BTRIM(production_nomenclature) <> ''
+      AND BTRIM(production_employee) <> ''
+    )
+  )
 ORDER BY created_at DESC, deal_number DESC
 `
-	rows, err := r.db.Query(ctx, query, from, to, requireEmployee)
+	rows, err := r.db.Query(ctx, query, from, to, requireEmployee, requireProduction)
 	if err != nil {
 		return nil, err
 	}

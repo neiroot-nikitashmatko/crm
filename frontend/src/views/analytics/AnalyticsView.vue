@@ -121,7 +121,10 @@ const failedDealHint = computed(() => {
 async function openClosedDealsList(detail: 'nomenclature' | 'employee' = 'nomenclature') {
   closedDealsListDetail.value = detail
   isClosedDealsListOpen.value = true
-  await loadClosedDeals({ requireEmployee: detail === 'employee' })
+  await loadClosedDeals({
+    requireEmployee: detail === 'employee',
+    requireProduction: detail === 'nomenclature',
+  })
 }
 
 async function openClosedDeal(dealId: string) {

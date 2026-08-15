@@ -204,12 +204,13 @@ func (s *AnalyticsService) ClosedDealsList(
 	fromMs int64,
 	toMs int64,
 	requireEmployee bool,
+	requireProduction bool,
 ) ([]model.ClosedDealListItem, error) {
 	from, to, err := s.parsePeriod(fromMs, toMs)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.repo.ListClosedDeals(ctx, from, to, requireEmployee)
+	items, err := s.repo.ListClosedDeals(ctx, from, to, requireEmployee, requireProduction)
 	if err != nil {
 		return nil, err
 	}
