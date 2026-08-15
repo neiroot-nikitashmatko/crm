@@ -73,6 +73,20 @@ const router = createRouter({
           ],
         },
         {
+          path: 'analytics',
+          component: () => import('@/layouts/AnalyticsLayout.vue'),
+          meta: { title: 'Аналитика', requiresAdmin: true },
+          redirect: { name: 'analytics' },
+          children: [
+            {
+              path: '',
+              name: 'analytics',
+              component: () => import('@/views/analytics/AnalyticsView.vue'),
+              meta: { title: 'Аналитика', requiresAdmin: true },
+            },
+          ],
+        },
+        {
           path: 'employees',
           component: () => import('@/layouts/EmployeesLayout.vue'),
           meta: { title: 'Сотрудники', requiresAdmin: true },

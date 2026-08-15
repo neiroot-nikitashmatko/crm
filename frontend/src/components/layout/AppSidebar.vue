@@ -10,6 +10,7 @@ import {
   CalendarOutline,
   CashOutline,
   IdCardOutline,
+  BarChartOutline,
 } from '@vicons/ionicons5'
 import { useAuth } from '@/composables/useAuth'
 
@@ -39,6 +40,13 @@ const menuItems = [
     adminOnly: false,
   },
   { label: 'Зарплата', name: 'salary-add-deal', sectionName: 'salary', icon: CashOutline, adminOnly: false },
+  {
+    label: 'Аналитика',
+    name: 'analytics',
+    sectionName: 'analytics',
+    icon: BarChartOutline,
+    adminOnly: true,
+  },
   { label: 'Сотрудники', name: 'employees-list', sectionName: 'employees', icon: IdCardOutline, adminOnly: true },
 ]
 

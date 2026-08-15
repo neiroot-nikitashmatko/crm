@@ -21,6 +21,7 @@ func NewRouter(
 	salaryEntryHandler *SalaryEntryHandler,
 	quickReplyHandler *QuickReplyHandler,
 	notificationHandler *NotificationHandler,
+	analyticsHandler *AnalyticsHandler,
 	jwtManager *auth.Manager,
 	corsOrigins []string,
 ) http.Handler {
@@ -68,6 +69,14 @@ func NewRouter(
 	mux.HandleFunc("/api/v1/integrations/avito/chats/", avitoHandler.LeadChat)
 
 	mux.HandleFunc("/api/v1/notifications/summary", notificationHandler.Summary)
+
+	mux.HandleFunc("/api/v1/analytics/leads-traffic", analyticsHandler.LeadsTraffic)
+	mux.HandleFunc("/api/v1/analytics/deals-traffic", analyticsHandler.DealsTraffic)
+	mux.HandleFunc("/api/v1/analytics/lead-to-deal-conversion", analyticsHandler.LeadToDealConversion)
+	mux.HandleFunc("/api/v1/analytics/failed-lead-share", analyticsHandler.FailedLeadShare)
+	mux.HandleFunc("/api/v1/analytics/failed-deal-share", analyticsHandler.FailedDealShare)
+	mux.HandleFunc("/api/v1/analytics/closed-deals-production-share", analyticsHandler.ClosedDealsProductionShare)
+	mux.HandleFunc("/api/v1/analytics/closed-deals-employee-share", analyticsHandler.ClosedDealsEmployeeShare)
 
 	// Authenticated SSE stream with internal events.
 	mux.HandleFunc("/api/v1/events/leads", eventsHandler.LeadCreatedStream)

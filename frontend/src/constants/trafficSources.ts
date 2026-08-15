@@ -24,6 +24,16 @@ export const MANUAL_TRAFFIC_SOURCE_OPTIONS = MANUAL_TRAFFIC_SOURCES.map((value) 
 /** Источник лидов из чата Авито (ставится автоматически). */
 export const AVITO_CHAT_TRAFFIC_SOURCE = 'Авито Чат'
 
+/** Источник, если звонок Билайн не сопоставился с номером из справочника. */
+export const BEELINE_TRAFFIC_SOURCE = 'Билайн'
+
+/** Все источники трафика, которые есть в системе. */
+export const ALL_TRAFFIC_SOURCES = [
+  ...MANUAL_TRAFFIC_SOURCES,
+  AVITO_CHAT_TRAFFIC_SOURCE,
+  BEELINE_TRAFFIC_SOURCE,
+] as const
+
 export function isManualTrafficSource(value: string): boolean {
   return (MANUAL_TRAFFIC_SOURCES as readonly string[]).includes(value.trim())
 }
