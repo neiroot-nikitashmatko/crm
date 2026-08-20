@@ -1,5 +1,5 @@
 export type EmployeeRole = 'admin' | 'manager'
-export type EmployeePosition = 'Менеджер' | 'Мастер' | 'Руководитель'
+export type EmployeePosition = 'Менеджер' | 'Мастер' | 'Руководитель' | 'Бухгалтер'
 
 export interface Employee {
   id: string

@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import SalaryNav from '@/components/salary/SalaryNav.vue'
-import SalarySectionHeader from '@/components/salary/SalarySectionHeader.vue'
+import TradeNav from '@/components/trade/TradeNav.vue'
+import TradeSectionHeader from '@/components/trade/TradeSectionHeader.vue'
 </script>
 
 <template>
-  <div class="salary-layout">
-    <SalarySectionHeader />
+  <div class="trade-layout">
+    <TradeSectionHeader />
 
-    <div class="salary-layout__main">
-      <SalaryNav />
+    <div class="trade-layout__main">
+      <TradeNav />
 
-      <div class="salary-layout__content">
+      <div class="trade-layout__content">
         <RouterView />
       </div>
     </div>
@@ -18,7 +18,7 @@ import SalarySectionHeader from '@/components/salary/SalarySectionHeader.vue'
 </template>
 
 <style scoped>
-.salary-layout {
+.trade-layout {
   display: flex;
   flex-direction: column;
   height: calc(100dvh - 64px);
@@ -27,14 +27,14 @@ import SalarySectionHeader from '@/components/salary/SalarySectionHeader.vue'
   background: #ffffff;
 }
 
-.salary-layout__main {
+.trade-layout__main {
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.salary-layout__content {
+.trade-layout__content {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -44,7 +44,7 @@ import SalarySectionHeader from '@/components/salary/SalarySectionHeader.vue'
   padding: 0;
 }
 
-.salary-layout__content > * {
+.trade-layout__content > * {
   flex: 1;
   min-height: 0;
 }

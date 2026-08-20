@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { NIcon } from 'naive-ui'
-import { PencilOutline, TrashOutline } from '@vicons/ionicons5'
-import ProductsCatalogSectionHeader from '@/components/products/ProductsCatalogSectionHeader.vue'
+import { AddOutline, PencilOutline, TrashOutline } from '@vicons/ionicons5'
+import SectionSubviewHeader from '@/components/common/SectionSubviewHeader.vue'
 import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
 import { useProductsCatalog } from '@/composables/useProductsCatalog'
@@ -135,7 +135,19 @@ onMounted(() => {
 
 <template>
   <div class="products-catalog-page">
-    <ProductsCatalogSectionHeader @add-product="openCreateModal" />
+    <SectionSubviewHeader title="Товары и услуги">
+      <template #actions>
+        <button
+          type="button"
+          class="products-catalog-page__create-btn"
+          title="Добавить товар"
+          aria-label="Добавить товар"
+          @click="openCreateModal"
+        >
+          <NIcon :size="18" :component="AddOutline" />
+        </button>
+      </template>
+    </SectionSubviewHeader>
 
     <div class="products-catalog-page__body">
       <section v-if="!hasAnyProducts" class="products-catalog-page__placeholder">
@@ -271,7 +283,7 @@ onMounted(() => {
     v-model:show="isProductModalOpen"
     :title="modalTitle"
     width="wide"
-    actions-align="end"
+    actions-align="center"
     :close-label="isEditMode ? 'Закрыть окно редактирования товара' : 'Закрыть окно добавления товара'"
     @close="resetProductForm"
   >
@@ -332,18 +344,44 @@ onMounted(() => {
 .products-catalog-page {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 64px);
-  max-height: calc(100dvh - 64px);
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
-  background: #ffffff;
 }
 
 .products-catalog-page__body {
-  flex: 1 1 auto;
+  flex: 1;
+  min-width: 0;
   min-height: 0;
-  overflow-y: auto;
-  padding: 16px 24px;
+  overflow: auto;
+  padding: 24px;
   box-sizing: border-box;
+  scrollbar-gutter: stable;
+}
+
+.products-catalog-page__create-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d9e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.products-catalog-page__create-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1f2937;
 }
 
 .products-catalog-page__placeholder {

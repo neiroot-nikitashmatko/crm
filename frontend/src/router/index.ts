@@ -42,15 +42,51 @@ const router = createRouter({
         },
         {
           path: 'products-catalog',
-          name: 'products-catalog',
-          component: () => import('@/views/ProductsCatalogView.vue'),
-          meta: { title: 'Каталог товаров', sectionName: 'products-catalog' },
+          redirect: '/trade/products',
         },
         {
           path: 'production-calendar',
           name: 'production-calendar',
           component: () => import('@/views/ProductionCalendarView.vue'),
           meta: { title: 'Календарь производства', sectionName: 'production-calendar' },
+        },
+        {
+          path: 'trade',
+          component: () => import('@/layouts/TradeLayout.vue'),
+          meta: { title: 'Торговля', sectionName: 'trade' },
+          redirect: { name: 'trade-outgoing-invoices' },
+          children: [
+            {
+              path: 'outgoing-invoices',
+              name: 'trade-outgoing-invoices',
+              component: () => import('@/views/trade/OutgoingInvoicesView.vue'),
+              meta: { title: 'Расходные накладные', sectionName: 'trade' },
+            },
+            {
+              path: 'incoming-invoices',
+              name: 'trade-incoming-invoices',
+              component: () => import('@/views/trade/IncomingInvoicesView.vue'),
+              meta: { title: 'Приходные накладные', sectionName: 'trade' },
+            },
+            {
+              path: 'stock-balances',
+              name: 'trade-stock-balances',
+              component: () => import('@/views/trade/StockBalancesView.vue'),
+              meta: { title: 'Остатки на складе', sectionName: 'trade' },
+            },
+            {
+              path: 'suppliers',
+              name: 'trade-suppliers',
+              component: () => import('@/views/trade/SuppliersView.vue'),
+              meta: { title: 'Поставщики', sectionName: 'trade' },
+            },
+            {
+              path: 'products',
+              name: 'products-catalog',
+              component: () => import('@/views/ProductsCatalogView.vue'),
+              meta: { title: 'Товары и услуги', sectionName: 'trade' },
+            },
+          ],
         },
         {
           path: 'salary',
@@ -71,6 +107,12 @@ const router = createRouter({
               meta: { title: 'Отчёт', sectionName: 'salary' },
             },
           ],
+        },
+        {
+          path: 'payment-calendar',
+          name: 'payment-calendar',
+          component: () => import('@/views/PaymentCalendarView.vue'),
+          meta: { title: 'Календарь оплат', sectionName: 'payment-calendar' },
         },
         {
           path: 'analytics',

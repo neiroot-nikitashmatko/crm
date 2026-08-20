@@ -19,6 +19,7 @@ func NewRouter(
 	avitoHandler *AvitoIntegrationHandler,
 	eventsHandler *EventsHandler,
 	salaryEntryHandler *SalaryEntryHandler,
+	paymentHandler *PaymentHandler,
 	quickReplyHandler *QuickReplyHandler,
 	notificationHandler *NotificationHandler,
 	analyticsHandler *AnalyticsHandler,
@@ -54,6 +55,9 @@ func NewRouter(
 
 	mux.HandleFunc("/api/v1/salary-entries", salaryEntryHandler.Collection)
 	mux.HandleFunc("/api/v1/salary-entries/", salaryEntryHandler.Item)
+
+	mux.HandleFunc("/api/v1/payments", paymentHandler.Collection)
+	mux.HandleFunc("/api/v1/payments/", paymentHandler.Item)
 
 	mux.HandleFunc("/api/v1/quick-reply-sections", quickReplyHandler.Collection)
 	mux.HandleFunc("/api/v1/quick-reply-sections/", quickReplyHandler.Item)

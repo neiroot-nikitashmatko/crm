@@ -6,9 +6,10 @@ import {
   ChatbubblesOutline,
   BriefcaseOutline,
   CheckboxOutline,
-  CubeOutline,
   CalendarOutline,
+  StorefrontOutline,
   CashOutline,
+  WalletOutline,
   IdCardOutline,
   BarChartOutline,
 } from '@vicons/ionicons5'
@@ -31,7 +32,6 @@ const menuItems = [
   { label: 'Чаты', name: 'chats', sectionName: 'chats', icon: ChatbubblesOutline, adminOnly: false },
   { label: 'Сделки', name: 'deals', sectionName: 'deals', icon: BriefcaseOutline, adminOnly: false },
   { label: 'Задачи', name: 'tasks', sectionName: 'tasks', icon: CheckboxOutline, adminOnly: false },
-  { label: 'Каталог товаров', name: 'products-catalog', sectionName: 'products-catalog', icon: CubeOutline, adminOnly: false },
   {
     label: 'Календарь производства',
     name: 'production-calendar',
@@ -39,7 +39,21 @@ const menuItems = [
     icon: CalendarOutline,
     adminOnly: false,
   },
+  {
+    label: 'Торговля',
+    name: 'trade-outgoing-invoices',
+    sectionName: 'trade',
+    icon: StorefrontOutline,
+    adminOnly: false,
+  },
   { label: 'Зарплата', name: 'salary-add-deal', sectionName: 'salary', icon: CashOutline, adminOnly: false },
+  {
+    label: 'Календарь оплат',
+    name: 'payment-calendar',
+    sectionName: 'payment-calendar',
+    icon: WalletOutline,
+    adminOnly: false,
+  },
   {
     label: 'Аналитика',
     name: 'analytics',
@@ -64,6 +78,15 @@ const activeName = computed(() => {
   }
   if (name === 'salary-add-deal' || name === 'salary-report') {
     return 'salary-add-deal'
+  }
+  if (
+    name === 'trade-outgoing-invoices' ||
+    name === 'trade-incoming-invoices' ||
+    name === 'trade-stock-balances' ||
+    name === 'trade-suppliers' ||
+    name === 'products-catalog'
+  ) {
+    return 'trade-outgoing-invoices'
   }
 
   return name
@@ -148,7 +171,7 @@ function navigate(name: string) {
 
 .app-sidebar__item--active {
   background: #eef7f0;
-  color: #14532d;
+  color: #1a202c;
   font-weight: 600;
 }
 
@@ -167,9 +190,5 @@ function navigate(name: string) {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-}
-
-.app-sidebar__item--active .app-sidebar__icon {
-  color: #1f883d;
 }
 </style>

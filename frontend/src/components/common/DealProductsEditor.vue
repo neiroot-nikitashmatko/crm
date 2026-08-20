@@ -117,7 +117,7 @@ function handlePriceBlur(index: number) {
 <template>
   <div class="deal-products-editor">
     <p v-if="!hasCatalogProducts" class="deal-products-editor__catalog-note">
-      Сначала добавьте товары в раздел «Каталог товаров», чтобы выбрать их здесь.
+      Сначала добавьте товары в раздел «Товары и услуги», чтобы выбрать их здесь.
     </p>
 
     <div class="deal-products-editor__list">

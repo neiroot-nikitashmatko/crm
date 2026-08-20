@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ListOutline, PersonAddOutline } from '@vicons/ionicons5'
+import {
+  CubeOutline,
+  DocumentTextOutline,
+  LayersOutline,
+  PeopleOutline,
+  ReceiptOutline,
+} from '@vicons/ionicons5'
 
 const route = useRoute()
 const router = useRouter()
 
 const navItems = [
-  { label: 'Список сотрудников', name: 'employees-list', icon: ListOutline },
-  { label: 'Добавить сотрудника', name: 'employees-new', icon: PersonAddOutline },
+  { label: 'Расходные накладные', name: 'trade-outgoing-invoices', icon: ReceiptOutline },
+  { label: 'Приходные накладные', name: 'trade-incoming-invoices', icon: DocumentTextOutline },
+  { label: 'Остатки на складе', name: 'trade-stock-balances', icon: LayersOutline },
+  { label: 'Поставщики', name: 'trade-suppliers', icon: PeopleOutline },
+  { label: 'Товары и услуги', name: 'products-catalog', icon: CubeOutline },
 ]
 
 const activeName = computed(() => route.name as string)
@@ -19,23 +28,23 @@ function navigate(name: string) {
 </script>
 
 <template>
-  <nav class="employees-nav" aria-label="Раздел сотрудников">
+  <nav class="salary-nav" aria-label="Раздел торговли">
     <button
       v-for="item in navItems"
       :key="item.name"
       type="button"
-      class="employees-nav__item"
-      :class="{ 'employees-nav__item--active': activeName === item.name }"
+      class="salary-nav__item"
+      :class="{ 'salary-nav__item--active': activeName === item.name }"
       @click="navigate(item.name)"
     >
-      <component :is="item.icon" class="employees-nav__icon" />
+      <component :is="item.icon" class="salary-nav__icon" />
       <span>{{ item.label }}</span>
     </button>
   </nav>
 </template>
 
 <style scoped>
-.employees-nav {
+.salary-nav {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -47,7 +56,7 @@ function navigate(name: string) {
   overflow-y: auto;
 }
 
-.employees-nav__item {
+.salary-nav__item {
   position: relative;
   display: flex;
   align-items: center;
@@ -66,18 +75,18 @@ function navigate(name: string) {
     color 0.15s ease;
 }
 
-.employees-nav__item:hover {
+.salary-nav__item:hover {
   background: #edf2f7;
   color: #1a202c;
 }
 
-.employees-nav__item--active {
+.salary-nav__item--active {
   background: #eef7f0;
   color: #1a202c;
   font-weight: 600;
 }
 
-.employees-nav__item--active::before {
+.salary-nav__item--active::before {
   content: '';
   position: absolute;
   top: 8px;
@@ -88,7 +97,7 @@ function navigate(name: string) {
   background: #1f883d;
 }
 
-.employees-nav__icon {
+.salary-nav__icon {
   width: 18px;
   height: 18px;
   flex-shrink: 0;

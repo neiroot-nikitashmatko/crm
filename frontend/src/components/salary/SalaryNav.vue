@@ -48,11 +48,12 @@ function navigate(name: string) {
 }
 
 .salary-nav__item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 14px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -71,9 +72,20 @@ function navigate(name: string) {
 }
 
 .salary-nav__item--active {
-  background: #edf2f7;
+  background: #eef7f0;
   color: #1a202c;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.salary-nav__item--active::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #1f883d;
 }
 
 .salary-nav__icon {

@@ -10,6 +10,7 @@ import (
 	"proclients/backend/internal/avito"
 	"proclients/backend/internal/config"
 	"proclients/backend/internal/handler"
+	"proclients/backend/internal/max"
 	"proclients/backend/internal/repository"
 	"proclients/backend/internal/service"
 
@@ -43,6 +44,7 @@ func main() {
 	attachmentRepo := repository.NewAttachmentRepository(db)
 	activityRepo := repository.NewActivityRepository(db)
 	salaryEntryRepo := repository.NewSalaryEntryRepository(db)
+	paymentRepo := repository.NewPaymentRepository(db)
 	avitoChatRepo := repository.NewAvitoChatRepository(db)
 	quickReplyRepo := repository.NewQuickReplyRepository(db)
 	analyticsRepo := repository.NewAnalyticsRepository(db)
@@ -61,6 +63,10 @@ func main() {
 	taskService := service.NewTaskService(taskRepo, attachmentService, activityService)
 	catalogProductService := service.NewCatalogProductService(catalogProductRepo)
 	salaryEntryService := service.NewSalaryEntryService(salaryEntryRepo, dealRepo, userRepo)
+	paymentService := service.NewPaymentService(paymentRepo, userRepo)
+	maxClient := max.NewClient(cfg.MaxBotToken, cfg.MaxChatID, cfg.MaxTLSInsecure)
+	paymentReminderService := service.NewPaymentReminderService(paymentRepo, maxClient)
+	paymentReminderService.Start(context.Background())
 	quickReplyService := service.NewQuickReplyService(quickReplyRepo)
 	analyticsService := service.NewAnalyticsService(analyticsRepo)
 
@@ -104,6 +110,7 @@ func main() {
 	avitoHandler := handler.NewAvitoIntegrationHandler(avitoIntegrationService, notificationService)
 	eventsHandler := handler.NewEventsHandler(eventsBus)
 	salaryEntryHandler := handler.NewSalaryEntryHandler(salaryEntryService)
+	paymentHandler := handler.NewPaymentHandler(paymentService)
 	quickReplyHandler := handler.NewQuickReplyHandler(quickReplyService)
 	notificationHandler := handler.NewNotificationHandler(notificationService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
@@ -120,6 +127,7 @@ func main() {
 		avitoHandler,
 		eventsHandler,
 		salaryEntryHandler,
+		paymentHandler,
 		quickReplyHandler,
 		notificationHandler,
 		analyticsHandler,

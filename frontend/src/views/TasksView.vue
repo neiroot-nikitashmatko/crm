@@ -136,7 +136,7 @@ async function handleCreateTaskClick() {
       v-model:show="isCreateTaskModalOpen"
       title="Новая задача"
       width="wide"
-      actions-align="end"
+      actions-align="center"
       close-label="Закрыть окно создания задачи"
       @close="closeCreateTaskModal"
     >

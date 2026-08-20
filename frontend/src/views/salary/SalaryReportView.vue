@@ -4,6 +4,7 @@ import { EyeOutline, TrashOutline } from '@vicons/ionicons5'
 import { NIcon, NSelect } from 'naive-ui'
 import AppModal from '@/components/common/AppModal.vue'
 import AppModalButton from '@/components/common/AppModalButton.vue'
+import SectionSubviewHeader from '@/components/common/SectionSubviewHeader.vue'
 import DealDetailsSheet from '@/components/deals/DealDetailsSheet.vue'
 import SalaryReportEntrySheet from '@/components/salary/SalaryReportEntrySheet.vue'
 import { useAuth } from '@/composables/useAuth'
@@ -198,10 +199,8 @@ function handleEntrySaved() {
 
 <template>
   <div class="salary-report-view">
-    <section class="salary-report-view__panel">
-      <header class="salary-report-view__panel-header">
-        <h2 class="salary-report-view__title">Отчёт</h2>
-
+    <SectionSubviewHeader title="Отчёт">
+      <template #actions>
         <div class="salary-report-view__actions">
           <p class="salary-report-view__month-total">
             <span class="salary-report-view__month-total-label">Зарплата за месяц:</span>
@@ -240,9 +239,10 @@ function handleEntrySaved() {
             />
           </div>
         </div>
-      </header>
+      </template>
+    </SectionSubviewHeader>
 
-      <div class="salary-report-view__panel-body">
+    <div class="salary-report-view__body">
         <div v-if="isLoading" class="salary-report-view__empty">
           <p class="salary-report-view__empty-text">Загрузка…</p>
         </div>
@@ -333,8 +333,7 @@ function handleEntrySaved() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+    </div>
 
     <SalaryReportEntrySheet
       v-if="selectedEntry"
@@ -380,41 +379,21 @@ function handleEntrySaved() {
 .salary-report-view {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   width: 100%;
   min-width: 0;
-  height: calc(100dvh - 64px - 56px - 48px);
-  max-height: calc(100dvh - 64px - 56px - 48px);
-}
-
-.salary-report-view__panel {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #ffffff;
   overflow: hidden;
 }
 
-.salary-report-view__panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-shrink: 0;
-  min-height: 56px;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e2e8f0;
+.salary-report-view__body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
   box-sizing: border-box;
-  background: #ffffff;
-}
-
-.salary-report-view__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a202c;
+  scrollbar-gutter: stable;
 }
 
 .salary-report-view__actions {
@@ -476,13 +455,6 @@ function handleEntrySaved() {
 
 .salary-report-view__period-select--year {
   width: 68px;
-}
-
-.salary-report-view__panel-body {
-  flex: 1;
-  min-height: 0;
-  padding: 20px;
-  overflow: auto;
 }
 
 .salary-report-view__empty {
@@ -693,11 +665,6 @@ function handleEntrySaved() {
 }
 
 @media (max-width: 900px) {
-  .salary-report-view__panel-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .salary-report-view__actions {
     width: 100%;
     justify-content: flex-start;

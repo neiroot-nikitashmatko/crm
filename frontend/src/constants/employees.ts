@@ -4,6 +4,7 @@ export const EMPLOYEE_POSITION_OPTIONS: Array<{ label: EmployeePosition; value: 
   { label: 'Руководитель', value: 'Руководитель' },
   { label: 'Менеджер', value: 'Менеджер' },
   { label: 'Мастер', value: 'Мастер' },
+  { label: 'Бухгалтер', value: 'Бухгалтер' },
 ]
 
 export const EMPLOYEE_ROLE_LABELS: Record<EmployeeRole, string> = {
@@ -31,6 +32,7 @@ export function roleForEmployeePosition(
 export function normalizeEmployeePosition(position: string): EmployeePosition | null {
   const normalized = position.trim().toLocaleLowerCase('ru-RU')
   if (normalized.includes('руководитель')) return 'Руководитель'
+  if (normalized.includes('бухгалтер')) return 'Бухгалтер'
   if (normalized.includes('мастер')) return 'Мастер'
   if (normalized.includes('менеджер')) return 'Менеджер'
   return null

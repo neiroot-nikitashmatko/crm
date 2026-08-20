@@ -16,8 +16,8 @@ const managerSections = new Set([
   'chats',
   'deals',
   'tasks',
-  'products-catalog',
   'production-calendar',
+  'trade',
 ])
 
 const masterSections = new Set([
@@ -27,8 +27,11 @@ const masterSections = new Set([
   'salary',
 ])
 
-function normalizePosition(position?: string): 'manager' | 'master' | '' {
+const accountantSections = new Set(['payment-calendar'])
+
+function normalizePosition(position?: string): 'manager' | 'master' | 'accountant' | '' {
   const normalized = position?.trim().toLocaleLowerCase('ru-RU') ?? ''
+  if (normalized.includes('бухгалтер')) return 'accountant'
   if (normalized.includes('мастер')) return 'master'
   if (normalized.includes('менеджер')) return 'manager'
   return ''
@@ -85,6 +88,7 @@ export function useAuth() {
     if (isAdmin.value) return true
     if (position.value === 'manager') return managerSections.has(sectionName)
     if (position.value === 'master') return masterSections.has(sectionName)
+    if (position.value === 'accountant') return accountantSections.has(sectionName)
 
     // Existing sessions created before position was returned by the API should not lock users out.
     if (rawPosition.value === '') return managerSections.has(sectionName)
@@ -94,6 +98,7 @@ export function useAuth() {
 
   function getDefaultRouteName(): string {
     if (canAccessSection('leads')) return 'leads'
+    if (canAccessSection('payment-calendar')) return 'payment-calendar'
     return 'login'
   }
 

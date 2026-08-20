@@ -27,6 +27,10 @@ type Config struct {
 	AvitoWebhookSecret   string
 	AvitoCreatedByUserID string
 	AvitoWebhookDebug    bool
+
+	MaxBotToken    string
+	MaxChatID      int64
+	MaxTLSInsecure bool
 }
 
 func Load() (Config, error) {
@@ -50,6 +54,10 @@ func Load() (Config, error) {
 		AvitoWebhookSecret:   strings.TrimSpace(os.Getenv("AVITO_WEBHOOK_SECRET")),
 		AvitoCreatedByUserID: strings.TrimSpace(os.Getenv("AVITO_CREATED_BY_USER_ID")),
 		AvitoWebhookDebug:    parseBoolEnv(os.Getenv("AVITO_WEBHOOK_DEBUG")),
+
+		MaxBotToken:    strings.TrimSpace(os.Getenv("MAX_BOT_TOKEN")),
+		MaxChatID:      parseInt64Env(os.Getenv("MAX_CHAT_ID")),
+		MaxTLSInsecure: parseBoolEnv(os.Getenv("MAX_TLS_INSECURE")),
 	}
 
 	if cfg.AvitoCreatedByUserID == "" {
