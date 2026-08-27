@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import { EyeOutline } from '@vicons/ionicons5'
 import AnalyticsClosedDealsModal from '@/components/analytics/AnalyticsClosedDealsModal.vue'
+import AnalyticsFailedLeadsModal from '@/components/analytics/AnalyticsFailedLeadsModal.vue'
 import AnalyticsKpiCard from '@/components/analytics/AnalyticsKpiCard.vue'
 import AnalyticsLeadsTrafficCard from '@/components/analytics/AnalyticsLeadsTrafficCard.vue'
 import DealDetailsSheet from '@/components/deals/DealDetailsSheet.vue'
@@ -11,12 +13,15 @@ import { useDeals } from '@/composables/useDeals'
 import { useEmployeeShareAnalytics } from '@/composables/useEmployeeShareAnalytics'
 import { useFailedDealShare } from '@/composables/useFailedDealShare'
 import { useFailedLeadShare } from '@/composables/useFailedLeadShare'
+import { useFailedLeadsList } from '@/composables/useFailedLeadsList'
 import { useLeadToDealConversion } from '@/composables/useLeadToDealConversion'
 import {
   useDealTrafficAnalytics,
   useLeadTrafficAnalytics,
 } from '@/composables/useLeadTrafficAnalytics'
 import { useProductionShareAnalytics } from '@/composables/useProductionShareAnalytics'
+
+const router = useRouter()
 
 const {
   metrics: leadMetrics,
@@ -68,9 +73,17 @@ const {
   loadFailedDeals,
 } = useClosedDealsList()
 
+const {
+  leads: failedLeads,
+  isLoading: failedLeadsLoading,
+  errorMessage: failedLeadsError,
+  loadFailedLeads,
+} = useFailedLeadsList()
+
 const { deals, loadDeals } = useDeals()
 
 const isClosedDealsListOpen = ref(false)
+const isFailedLeadsListOpen = ref(false)
 const selectedDealId = ref<string | null>(null)
 const shouldReturnToClosedDealsList = ref(false)
 const closedDealsListDetail = ref<'nomenclature' | 'employee' | 'failed'>('nomenclature')
@@ -134,6 +147,11 @@ async function openFailedDealsList() {
   await loadFailedDeals()
 }
 
+async function openFailedLeadsList() {
+  isFailedLeadsListOpen.value = true
+  await loadFailedLeads()
+}
+
 async function openClosedDeal(dealId: string) {
   shouldReturnToClosedDealsList.value = true
   isClosedDealsListOpen.value = false
@@ -149,6 +167,12 @@ async function openClosedDeal(dealId: string) {
 
   shouldReturnToClosedDealsList.value = false
   isClosedDealsListOpen.value = true
+}
+
+async function openFailedLead(leadId: string) {
+  if (!leadId) return
+  isFailedLeadsListOpen.value = false
+  await router.push({ name: 'leads', query: { leadId } })
 }
 
 function handleCloseDealSheet() {
@@ -214,7 +238,21 @@ function getDealWord(count: number): string {
         :hint="failedHint"
         :loading="failedLoading"
         color="#e11d48"
-      />
+      >
+        <template #header-actions>
+          <button
+            type="button"
+            class="analytics-view__icon-action"
+            title="Список лидов"
+            aria-label="Открыть список проваленных лидов"
+            @click="openFailedLeadsList"
+          >
+            <NIcon :size="16">
+              <EyeOutline />
+            </NIcon>
+          </button>
+        </template>
+      </AnalyticsKpiCard>
       <AnalyticsKpiCard
         title="Доля проваленных сделок"
         :percent="failedDealPercent"
@@ -294,6 +332,14 @@ function getDealWord(count: number): string {
       :error-message="closedDealsError"
       :detail="closedDealsListDetail"
       @select="openClosedDeal"
+    />
+
+    <AnalyticsFailedLeadsModal
+      v-model:show="isFailedLeadsListOpen"
+      :leads="failedLeads"
+      :loading="failedLeadsLoading"
+      :error-message="failedLeadsError"
+      @select="openFailedLead"
     />
 
     <DealDetailsSheet :deal-id="selectedDealId" @close="handleCloseDealSheet" />

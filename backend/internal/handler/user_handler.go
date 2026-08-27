@@ -189,9 +189,16 @@ func (h *UserHandler) avatar(w http.ResponseWriter, r *http.Request, userID stri
 
 func requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok || claims.Role != "admin" {
+	if !ok {
 		writeError(w, http.StatusForbidden, "Доступно только администратору")
 		return false
 	}
-	return true
+	if claims.Role == "admin" {
+		return true
+	}
+	if strings.EqualFold(strings.TrimSpace(claims.Position), "Руководитель") {
+		return true
+	}
+	writeError(w, http.StatusForbidden, "Доступно только администратору")
+	return false
 }

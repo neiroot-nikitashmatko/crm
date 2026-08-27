@@ -25,6 +25,7 @@ export function useOutgoingInvoices() {
       id: createId(),
       invoiceNumber: nextInvoiceNumber(),
       date: input.date,
+      dealId: input.dealId,
       items: input.items.map((item) => ({ ...item })),
       total: input.total,
       comment: input.comment.trim(),
@@ -42,6 +43,7 @@ export function useOutgoingInvoices() {
     const updated: OutgoingInvoice = {
       ...current,
       date: input.date,
+      dealId: input.dealId,
       items: input.items.map((item) => ({ ...item })),
       total: input.total,
       comment: input.comment.trim(),

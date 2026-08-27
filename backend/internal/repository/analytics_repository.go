@@ -339,6 +339,58 @@ ORDER BY created_at DESC, deal_number DESC
 	return items, nil
 }
 
+func (r *AnalyticsRepository) ListFailedLeads(
+	ctx context.Context,
+	from time.Time,
+	to time.Time,
+) ([]model.FailedLeadListItem, error) {
+	const query = `
+SELECT
+  id::text,
+  lead_number,
+  first_name,
+  COALESCE(patronymic, ''),
+  phone,
+  BTRIM(COALESCE(failure_reason, '')),
+  created_at
+FROM leads
+WHERE deleted_at IS NULL
+  AND column_id = 'failed'
+  AND created_at >= $1
+  AND created_at <= $2
+ORDER BY created_at DESC, lead_number DESC
+`
+	rows, err := r.db.Query(ctx, query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]model.FailedLeadListItem, 0)
+	for rows.Next() {
+		var item model.FailedLeadListItem
+		var createdAt time.Time
+		if err := rows.Scan(
+			&item.ID,
+			&item.LeadNumber,
+			&item.FirstName,
+			&item.Patronymic,
+			&item.Phone,
+			&item.FailureReason,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
+		item.CreatedAt = createdAt.UnixMilli()
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
 func (r *AnalyticsRepository) scanTrafficSourceCounts(
 	ctx context.Context,
 	query string,

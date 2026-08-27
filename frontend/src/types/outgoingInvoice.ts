@@ -9,6 +9,7 @@ export interface OutgoingInvoice {
   id: string
   invoiceNumber: number
   date: number
+  dealId: string
   items: OutgoingInvoiceItem[]
   total: number
   comment: string

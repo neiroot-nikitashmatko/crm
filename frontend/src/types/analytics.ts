@@ -51,6 +51,16 @@ export interface ClosedDealListItem {
   closedAt: number
 }
 
+export interface FailedLeadListItem {
+  id: string
+  leadNumber: number
+  firstName: string
+  patronymic: string
+  phone: string
+  failureReason: string
+  createdAt: number
+}
+
 export type AnalyticsDateRange = [number, number]
 
 export type AnalyticsPeriodPreset = 'today' | 'month' | 'custom'

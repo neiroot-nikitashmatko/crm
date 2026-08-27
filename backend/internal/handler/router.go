@@ -83,6 +83,7 @@ func NewRouter(
 	mux.HandleFunc("/api/v1/analytics/closed-deals-employee-share", analyticsHandler.ClosedDealsEmployeeShare)
 	mux.HandleFunc("/api/v1/analytics/closed-deals", analyticsHandler.ClosedDealsList)
 	mux.HandleFunc("/api/v1/analytics/failed-deals", analyticsHandler.FailedDealsList)
+	mux.HandleFunc("/api/v1/analytics/failed-leads", analyticsHandler.FailedLeadsList)
 
 	// Authenticated SSE stream with internal events.
 	mux.HandleFunc("/api/v1/events/leads", eventsHandler.LeadCreatedStream)

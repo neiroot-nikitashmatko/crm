@@ -14,9 +14,10 @@ import (
 var ErrInvalidToken = errors.New("invalid token")
 
 type Claims struct {
-	UserID string `json:"sub"`
-	Phone  string `json:"phone"`
-	Role   string `json:"role"`
+	UserID   string `json:"sub"`
+	Phone    string `json:"phone"`
+	Role     string `json:"role"`
+	Position string `json:"position,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -46,9 +47,10 @@ func (m *Manager) Issue(user *model.AuthUser) (string, error) {
 
 	now := time.Now()
 	claims := Claims{
-		UserID: user.ID,
-		Phone:  user.Phone,
-		Role:   user.Role,
+		UserID:   user.ID,
+		Phone:    user.Phone,
+		Role:     user.Role,
+		Position: user.Position,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID,
 			IssuedAt:  jwt.NewNumericDate(now),

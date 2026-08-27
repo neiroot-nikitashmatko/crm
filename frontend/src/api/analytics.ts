@@ -1,5 +1,5 @@
 import { ApiError, requestJson } from '@/api/httpClient'
-import type { AnalyticsDateRange, ClosedDealListItem, EmployeeShareCount, FailedDealShare, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
+import type { AnalyticsDateRange, ClosedDealListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
 
 interface TrafficSourceResponse {
   items: TrafficSourceCount[]
@@ -193,6 +193,23 @@ export async function fetchFailedDealsList(
   return payload.items.map(mapClosedDealListItem)
 }
 
+export async function fetchFailedLeadsList(
+  range: AnalyticsDateRange,
+): Promise<FailedLeadListItem[]> {
+  const [from, to] = range
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+  })
+  const payload = await analyticsRequestJson<{ items: FailedLeadListItem[] }>(
+    `/api/v1/analytics/failed-leads?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  if (!Array.isArray(payload.items)) return []
+  return payload.items.map(mapFailedLeadListItem)
+}
+
 function mapClosedDealListItem(item: ClosedDealListItem): ClosedDealListItem {
   return {
     id: String(item.id ?? ''),
@@ -206,5 +223,17 @@ function mapClosedDealListItem(item: ClosedDealListItem): ClosedDealListItem {
     failureReason: String(item.failureReason ?? ''),
     createdAt: Number(item.createdAt ?? 0),
     closedAt: Number(item.closedAt ?? 0),
+  }
+}
+
+function mapFailedLeadListItem(item: FailedLeadListItem): FailedLeadListItem {
+  return {
+    id: String(item.id ?? ''),
+    leadNumber: Number(item.leadNumber ?? 0),
+    firstName: String(item.firstName ?? ''),
+    patronymic: String(item.patronymic ?? ''),
+    phone: String(item.phone ?? ''),
+    failureReason: String(item.failureReason ?? ''),
+    createdAt: Number(item.createdAt ?? 0),
   }
 }

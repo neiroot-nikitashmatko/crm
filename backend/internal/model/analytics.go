@@ -51,3 +51,13 @@ type ClosedDealListItem struct {
 	CreatedAt     int64  `json:"createdAt"`
 	ClosedAt      int64  `json:"closedAt"`
 }
+
+type FailedLeadListItem struct {
+	ID            string `json:"id"`
+	LeadNumber    int64  `json:"leadNumber"`
+	FirstName     string `json:"firstName"`
+	Patronymic    string `json:"patronymic"`
+	Phone         string `json:"phone"`
+	FailureReason string `json:"failureReason"`
+	CreatedAt     int64  `json:"createdAt"`
+}

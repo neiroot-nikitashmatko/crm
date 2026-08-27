@@ -163,6 +163,10 @@ onBeforeUnmount(() => {
 function handlePositionUpdate(value: EmployeePosition | null) {
   if (isHeadEmployeePosition(value)) {
     employeeForm.role = 'admin'
+    return
+  }
+  if (value != null && employeeForm.role == null) {
+    employeeForm.role = 'manager'
   }
 }
 

@@ -17,9 +17,11 @@ export async function fetchNotificationSummary(): Promise<NotificationSummary> {
   }
 
   try {
-    const payload = await requestJson<NotificationSummary>('/api/v1/notifications/summary', {
-      method: 'GET',
-    })
+    const payload = await requestJson<NotificationSummary>(
+      '/api/v1/notifications/summary',
+      { method: 'GET' },
+      { logoutOn401: false },
+    )
     const real = {
       newLeadsCount: Number(payload.newLeadsCount) || 0,
       unreadChatsCount: Number(payload.unreadChatsCount) || 0,
