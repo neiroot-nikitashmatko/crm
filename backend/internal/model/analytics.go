@@ -78,3 +78,13 @@ type TradeProfit struct {
 	Cost          float64 `json:"cost"`
 	InvoicesCount int     `json:"invoicesCount"`
 }
+
+type TradeProfitItem struct {
+	ProductKey string  `json:"productKey"`
+	Title      string  `json:"title"`
+	Quantity   float64 `json:"quantity"`
+	CostPrice  float64 `json:"costPrice"`
+	SalePrice  float64 `json:"salePrice"`
+	Profit     float64 `json:"profit"`
+	HasCost    bool    `json:"hasCost"`
+}

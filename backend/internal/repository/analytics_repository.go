@@ -494,6 +494,89 @@ LEFT JOIN product_costs c ON c.product_key = s.product_key
 	return item, nil
 }
 
+func (r *AnalyticsRepository) TradeProfitItems(
+	ctx context.Context,
+	from time.Time,
+	to time.Time,
+) ([]model.TradeProfitItem, error) {
+	const query = `
+WITH product_costs AS (
+  SELECT
+    CASE
+      WHEN catalog_product_id IS NOT NULL THEN 'id:' || catalog_product_id::text
+      ELSE 'title:' || lower(btrim(title))
+    END AS product_key,
+    SUM(quantity * unit_price) / NULLIF(SUM(quantity), 0) AS avg_cost
+  FROM incoming_invoice_items
+  WHERE btrim(title) <> '' OR catalog_product_id IS NOT NULL
+  GROUP BY 1
+),
+sales AS (
+  SELECT
+    i.title,
+    i.quantity,
+    i.unit_price,
+    CASE
+      WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
+      ELSE 'title:' || lower(btrim(i.title))
+    END AS product_key
+  FROM outgoing_invoices o
+  JOIN outgoing_invoice_items i ON i.invoice_id = o.id
+  WHERE o.invoice_date >= $1
+    AND o.invoice_date <= $2
+    AND (btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL)
+)
+SELECT
+  s.product_key,
+  COALESCE(
+    (
+      ARRAY_AGG(NULLIF(btrim(s.title), '') ORDER BY s.quantity DESC)
+      FILTER (WHERE btrim(s.title) <> '')
+    )[1],
+    'Без названия'
+  ) AS title,
+  COALESCE(SUM(s.quantity), 0)::float8 AS quantity,
+  COALESCE(c.avg_cost, 0)::float8 AS cost_price,
+  COALESCE(
+    SUM(s.quantity * s.unit_price) / NULLIF(SUM(s.quantity), 0),
+    0
+  )::float8 AS sale_price,
+  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.avg_cost, 0))), 0)::float8 AS profit,
+  (c.avg_cost IS NOT NULL) AS has_cost
+FROM sales s
+LEFT JOIN product_costs c ON c.product_key = s.product_key
+GROUP BY s.product_key, c.avg_cost
+ORDER BY profit DESC, title ASC
+`
+	rows, err := r.db.Query(ctx, query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]model.TradeProfitItem, 0)
+	for rows.Next() {
+		var item model.TradeProfitItem
+		if err := rows.Scan(
+			&item.ProductKey,
+			&item.Title,
+			&item.Quantity,
+			&item.CostPrice,
+			&item.SalePrice,
+			&item.Profit,
+			&item.HasCost,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
 func (r *AnalyticsRepository) scanTrafficSourceCounts(
 	ctx context.Context,
 	query string,

@@ -267,3 +267,15 @@ func (s *AnalyticsService) TradeProfit(
 	}
 	return s.repo.TradeProfit(ctx, from, to)
 }
+
+func (s *AnalyticsService) TradeProfitItems(
+	ctx context.Context,
+	fromMs int64,
+	toMs int64,
+) ([]model.TradeProfitItem, error) {
+	from, to, err := s.parsePeriod(fromMs, toMs)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.TradeProfitItems(ctx, from, to)
+}

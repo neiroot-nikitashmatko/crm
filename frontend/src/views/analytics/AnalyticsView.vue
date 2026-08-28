@@ -9,6 +9,7 @@ import AnalyticsDealsTrafficModal from '@/components/analytics/AnalyticsDealsTra
 import AnalyticsFailedLeadsModal from '@/components/analytics/AnalyticsFailedLeadsModal.vue'
 import AnalyticsKpiCard from '@/components/analytics/AnalyticsKpiCard.vue'
 import AnalyticsLeadsTrafficCard from '@/components/analytics/AnalyticsLeadsTrafficCard.vue'
+import AnalyticsTradeProfitModal from '@/components/analytics/AnalyticsTradeProfitModal.vue'
 import DealDetailsSheet from '@/components/deals/DealDetailsSheet.vue'
 import { useClosedDealsList } from '@/composables/useClosedDealsList'
 import { useDeals } from '@/composables/useDeals'
@@ -24,6 +25,7 @@ import {
 } from '@/composables/useLeadTrafficAnalytics'
 import { useProductionShareAnalytics } from '@/composables/useProductionShareAnalytics'
 import { useTradeProfit } from '@/composables/useTradeProfit'
+import { useTradeProfitItems } from '@/composables/useTradeProfitItems'
 
 const router = useRouter()
 
@@ -69,6 +71,13 @@ const {
 } = useTradeProfit()
 
 const {
+  items: tradeProfitItems,
+  isLoading: tradeProfitItemsLoading,
+  errorMessage: tradeProfitItemsError,
+  loadItems: loadTradeProfitItems,
+} = useTradeProfitItems()
+
+const {
   metrics: productionMetrics,
   isLoading: productionLoading,
   errorMessage: productionError,
@@ -108,6 +117,7 @@ const { deals, loadDeals } = useDeals()
 const isClosedDealsListOpen = ref(false)
 const isFailedLeadsListOpen = ref(false)
 const isDealsTrafficListOpen = ref(false)
+const isTradeProfitListOpen = ref(false)
 const selectedDealId = ref<string | null>(null)
 const shouldReturnToClosedDealsList = ref(false)
 const shouldReturnToDealsTrafficList = ref(false)
@@ -189,6 +199,11 @@ async function openDealsTrafficList() {
     return
   }
   await loadTrafficDeals()
+}
+
+async function openTradeProfitList() {
+  isTradeProfitListOpen.value = true
+  await loadTradeProfitItems()
 }
 
 async function openClosedDeal(dealId: string) {
@@ -405,7 +420,21 @@ function getDealWord(count: number): string {
         :amount="tradeProfitAmount"
         :hint="tradeEmptyHint"
         :loading="tradeProfitLoading"
-      />
+      >
+        <template #header-actions>
+          <button
+            type="button"
+            class="analytics-view__icon-action"
+            title="Из чего сложилась прибыль"
+            aria-label="Открыть список товаров, из которых сложилась прибыль"
+            @click="openTradeProfitList"
+          >
+            <NIcon :size="16">
+              <EyeOutline />
+            </NIcon>
+          </button>
+        </template>
+      </AnalyticsAmountCard>
       <AnalyticsAmountCard
         title="Выручка"
         :amount="tradeRevenueAmount"
@@ -451,6 +480,13 @@ function getDealWord(count: number): string {
       :loading="trafficDealsLoading"
       :error-message="trafficDealsError"
       @select="openDealFromTrafficList"
+    />
+
+    <AnalyticsTradeProfitModal
+      v-model:show="isTradeProfitListOpen"
+      :items="tradeProfitItems"
+      :loading="tradeProfitItemsLoading"
+      :error-message="tradeProfitItemsError"
     />
 
     <DealDetailsSheet :deal-id="selectedDealId" @close="handleCloseDealSheet" />

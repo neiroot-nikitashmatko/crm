@@ -42,6 +42,9 @@ const amountClass = computed(() => {
   <section class="analytics-amount-card">
     <header class="analytics-amount-card__header">
       <h2 class="analytics-amount-card__title">{{ title }}</h2>
+      <div v-if="$slots['header-actions']" class="analytics-amount-card__header-actions">
+        <slot name="header-actions" />
+      </div>
     </header>
 
     <div
@@ -67,10 +70,16 @@ const amountClass = computed(() => {
 }
 
 .analytics-amount-card__header {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 12px 20px;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.analytics-amount-card__header:has(.analytics-amount-card__header-actions)
+  .analytics-amount-card__title {
+  padding-right: 42px;
 }
 
 .analytics-amount-card__title {
@@ -81,6 +90,16 @@ const amountClass = computed(() => {
   font-weight: 700;
   line-height: 1.3;
   color: #1a202c;
+}
+
+.analytics-amount-card__header-actions {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  transform: translateY(-50%);
 }
 
 .analytics-amount-card__body {

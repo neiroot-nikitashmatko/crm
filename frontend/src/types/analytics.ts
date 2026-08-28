@@ -78,6 +78,16 @@ export interface TradeProfit {
   invoicesCount: number
 }
 
+export interface TradeProfitItem {
+  productKey: string
+  title: string
+  quantity: number
+  costPrice: number
+  salePrice: number
+  profit: number
+  hasCost: boolean
+}
+
 export type AnalyticsDateRange = [number, number]
 
 export type AnalyticsPeriodPreset = 'today' | 'month' | 'custom'

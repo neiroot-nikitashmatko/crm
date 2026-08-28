@@ -8,7 +8,7 @@ withDefaults(
   defineProps<{
     title: string
     maskClosable?: boolean
-    width?: 'default' | 'wide' | 'large' | 'xlarge'
+    width?: 'default' | 'wide' | 'medium' | 'large' | 'xlarge'
     height?: 'auto' | 'tall'
     actionsAlign?: 'center' | 'end'
     bodyVariant?: 'default' | 'center' | 'date'
@@ -109,6 +109,11 @@ watch(show, (isOpen, wasOpen) => {
 
 .app-modal--width-wide {
   width: min(550px, calc(100vw - 32px));
+  max-height: min(90vh, 700px);
+}
+
+.app-modal--width-medium {
+  width: min(800px, calc(100vw - 32px));
   max-height: min(90vh, 700px);
 }
 

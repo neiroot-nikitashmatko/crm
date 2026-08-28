@@ -1,6 +1,6 @@
 import { ApiError, requestJson } from '@/api/httpClient'
-import { getMockTradeProfit, isTradeProfitMockEnabled } from '@/mocks/tradeProfit'
-import type { AnalyticsDateRange, ClosedDealListItem, DealTrafficListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TradeProfit, TrafficSourceCount } from '@/types/analytics'
+import { getMockTradeProfit, getMockTradeProfitItems, isTradeProfitMockEnabled } from '@/mocks/tradeProfit'
+import type { AnalyticsDateRange, ClosedDealListItem, DealTrafficListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TradeProfit, TradeProfitItem, TrafficSourceCount } from '@/types/analytics'
 
 interface TrafficSourceResponse {
   items: TrafficSourceCount[]
@@ -134,6 +134,25 @@ export async function fetchTradeProfit(range: AnalyticsDateRange): Promise<Trade
     cost: Number(payload.item?.cost ?? 0),
     invoicesCount: Number(payload.item?.invoicesCount ?? 0),
   }
+}
+
+export async function fetchTradeProfitItems(range: AnalyticsDateRange): Promise<TradeProfitItem[]> {
+  if (isTradeProfitMockEnabled()) {
+    return getMockTradeProfitItems(range)
+  }
+
+  const [from, to] = range
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+  })
+  const payload = await analyticsRequestJson<{ items: TradeProfitItem[] }>(
+    `/api/v1/analytics/trade-profit-items?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  if (!Array.isArray(payload.items)) return []
+  return payload.items.map(mapTradeProfitItem)
 }
 
 export async function fetchClosedDealsProductionShare(
@@ -288,5 +307,17 @@ function mapDealTrafficListItem(item: DealTrafficListItem): DealTrafficListItem 
     phone: String(item.phone ?? ''),
     trafficSource: String(item.trafficSource ?? ''),
     createdAt: Number(item.createdAt ?? 0),
+  }
+}
+
+function mapTradeProfitItem(item: TradeProfitItem): TradeProfitItem {
+  return {
+    productKey: String(item.productKey ?? ''),
+    title: String(item.title ?? '').trim() || 'Без названия',
+    quantity: Number(item.quantity ?? 0),
+    costPrice: Number(item.costPrice ?? 0),
+    salePrice: Number(item.salePrice ?? 0),
+    profit: Number(item.profit ?? 0),
+    hasCost: Boolean(item.hasCost),
   }
 }
