@@ -1,5 +1,5 @@
 import { ApiError, requestJson } from '@/api/httpClient'
-import type { AnalyticsDateRange, ClosedDealListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
+import type { AnalyticsDateRange, ClosedDealListItem, DealTrafficListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
 
 interface TrafficSourceResponse {
   items: TrafficSourceCount[]
@@ -210,6 +210,23 @@ export async function fetchFailedLeadsList(
   return payload.items.map(mapFailedLeadListItem)
 }
 
+export async function fetchDealsTrafficList(
+  range: AnalyticsDateRange,
+): Promise<DealTrafficListItem[]> {
+  const [from, to] = range
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+  })
+  const payload = await analyticsRequestJson<{ items: DealTrafficListItem[] }>(
+    `/api/v1/analytics/deals-traffic-list?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  if (!Array.isArray(payload.items)) return []
+  return payload.items.map(mapDealTrafficListItem)
+}
+
 function mapClosedDealListItem(item: ClosedDealListItem): ClosedDealListItem {
   return {
     id: String(item.id ?? ''),
@@ -234,6 +251,18 @@ function mapFailedLeadListItem(item: FailedLeadListItem): FailedLeadListItem {
     patronymic: String(item.patronymic ?? ''),
     phone: String(item.phone ?? ''),
     failureReason: String(item.failureReason ?? ''),
+    createdAt: Number(item.createdAt ?? 0),
+  }
+}
+
+function mapDealTrafficListItem(item: DealTrafficListItem): DealTrafficListItem {
+  return {
+    id: String(item.id ?? ''),
+    dealNumber: Number(item.dealNumber ?? 0),
+    firstName: String(item.firstName ?? ''),
+    patronymic: String(item.patronymic ?? ''),
+    phone: String(item.phone ?? ''),
+    trafficSource: String(item.trafficSource ?? ''),
     createdAt: Number(item.createdAt ?? 0),
   }
 }

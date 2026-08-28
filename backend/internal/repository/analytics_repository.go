@@ -391,6 +391,57 @@ ORDER BY created_at DESC, lead_number DESC
 	return items, nil
 }
 
+func (r *AnalyticsRepository) ListDealsForTrafficPeriod(
+	ctx context.Context,
+	from time.Time,
+	to time.Time,
+) ([]model.DealTrafficListItem, error) {
+	const query = `
+SELECT
+  id::text,
+  deal_number,
+  first_name,
+  COALESCE(patronymic, ''),
+  phone,
+  COALESCE(NULLIF(BTRIM(traffic_source), ''), 'Без источника') AS traffic_source,
+  created_at
+FROM deals
+WHERE deleted_at IS NULL
+  AND created_at >= $1
+  AND created_at <= $2
+ORDER BY created_at DESC, deal_number DESC
+`
+	rows, err := r.db.Query(ctx, query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]model.DealTrafficListItem, 0)
+	for rows.Next() {
+		var item model.DealTrafficListItem
+		var createdAt time.Time
+		if err := rows.Scan(
+			&item.ID,
+			&item.DealNumber,
+			&item.FirstName,
+			&item.Patronymic,
+			&item.Phone,
+			&item.TrafficSource,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
+		item.CreatedAt = createdAt.UnixMilli()
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
 func (r *AnalyticsRepository) scanTrafficSourceCounts(
 	ctx context.Context,
 	query string,

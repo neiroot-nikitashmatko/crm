@@ -14,8 +14,9 @@ import type { ProductRow } from '@/types/productRow'
 import { formatMoney } from '@/utils/money'
 import { createEmptyProductRow, normalizeUnitPrice, productsToRows } from '@/utils/products'
 
-const { suppliers } = useSuppliers()
-const { invoices, addInvoice, updateInvoice, removeInvoice } = useIncomingInvoices()
+const { suppliers, loadSuppliers } = useSuppliers()
+const { invoices, isLoading, loadInvoices, addInvoice, updateInvoice, removeInvoice } =
+  useIncomingInvoices()
 const { catalogProductOptions, hasCatalogProducts, getCatalogProductById, loadCatalog, products } =
   useProductsCatalog()
 
@@ -27,6 +28,8 @@ const invoiceDate = ref<number | null>(null)
 const supplierId = ref<string | null>(null)
 const invoiceComment = ref('')
 const rows = ref<ProductRow[]>([createEmptyProductRow()])
+const submitError = ref('')
+const deleteError = ref('')
 
 const datePickerTheme = {
   peers: {
@@ -98,6 +101,8 @@ const canSubmitInvoice = computed(
 
 onMounted(() => {
   void loadCatalog()
+  void loadSuppliers()
+  void loadInvoices()
 })
 
 function getRowSum(row: ProductRow) {
@@ -108,10 +113,15 @@ function getRowSum(row: ProductRow) {
 
 function resetInvoiceForm() {
   editingInvoiceId.value = null
+  submitError.value = ''
   invoiceDate.value = Date.now()
   supplierId.value = null
   invoiceComment.value = ''
   rows.value = [createEmptyProductRow()]
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback
 }
 
 function formatInvoiceDate(timestamp: number) {
@@ -129,6 +139,7 @@ function getSupplierName(id: string) {
 function openCreateModal() {
   resetInvoiceForm()
   void loadCatalog()
+  void loadSuppliers()
   isFormModalOpen.value = true
 }
 
@@ -206,7 +217,7 @@ function handleCostInput(index: number, event: Event) {
   row.unitPrice = normalizeUnitPrice(target.value.replace(/[^\d.]/g, ''))
 }
 
-function handleSubmitInvoice() {
+async function handleSubmitInvoice() {
   if (!canSubmitInvoice.value || invoiceDate.value === null || !supplierId.value) return
 
   const payload = {
@@ -222,34 +233,45 @@ function handleSubmitInvoice() {
     comment: invoiceComment.value.trim(),
   }
 
-  if (editingInvoiceId.value) {
-    updateInvoice(editingInvoiceId.value, payload)
-  } else {
-    addInvoice(payload)
+  submitError.value = ''
+  try {
+    if (editingInvoiceId.value) {
+      await updateInvoice(editingInvoiceId.value, payload)
+    } else {
+      await addInvoice(payload)
+    }
+    closeFormModal()
+    resetInvoiceForm()
+  } catch (error) {
+    submitError.value = getErrorMessage(error, 'Не удалось сохранить приходную накладную')
   }
-
-  closeFormModal()
-  resetInvoiceForm()
 }
 
 function handleDeleteInvoice(invoice: IncomingInvoice) {
   invoiceToDelete.value = invoice
+  deleteError.value = ''
   isDeleteModalOpen.value = true
 }
 
 function closeDeleteModal() {
   isDeleteModalOpen.value = false
   invoiceToDelete.value = null
+  deleteError.value = ''
 }
 
-function confirmDeleteInvoice() {
+async function confirmDeleteInvoice() {
   if (!invoiceToDelete.value) return
-  removeInvoice(invoiceToDelete.value.id)
-  if (editingInvoiceId.value === invoiceToDelete.value.id) {
-    closeFormModal()
-    resetInvoiceForm()
+  deleteError.value = ''
+  try {
+    await removeInvoice(invoiceToDelete.value.id)
+    if (editingInvoiceId.value === invoiceToDelete.value.id) {
+      closeFormModal()
+      resetInvoiceForm()
+    }
+    closeDeleteModal()
+  } catch (error) {
+    deleteError.value = getErrorMessage(error, 'Не удалось удалить приходную накладную')
   }
-  closeDeleteModal()
 }
 </script>
 
@@ -270,7 +292,11 @@ function confirmDeleteInvoice() {
     </SectionSubviewHeader>
 
     <div class="trade-subview__body">
-      <section v-if="invoices.length === 0" class="incoming-invoices-view__placeholder">
+      <section v-if="isLoading && invoices.length === 0" class="incoming-invoices-view__placeholder">
+        <p class="incoming-invoices-view__placeholder-text">Загрузка…</p>
+      </section>
+
+      <section v-else-if="invoices.length === 0" class="incoming-invoices-view__placeholder">
         <p class="incoming-invoices-view__placeholder-text">
           Пока нет приходных накладных. Добавьте первую через кнопку «+» вверху.
         </p>
@@ -406,6 +432,9 @@ function confirmDeleteInvoice() {
         <p v-if="!hasCatalogProducts" class="incoming-invoice-modal__note">
           Сначала добавьте товары в раздел «Товары и услуги», чтобы выбрать их здесь.
         </p>
+        <p v-if="submitError" class="incoming-invoice-modal__note incoming-invoice-modal__note--error">
+          {{ submitError }}
+        </p>
 
         <section class="incoming-invoice-modal__positions">
           <div class="incoming-invoice-modal__table">
@@ -515,6 +544,9 @@ function confirmDeleteInvoice() {
       @close="closeDeleteModal"
     >
       <p class="app-modal__message">Вы уверены, что хотите удалить данную приходную накладную?</p>
+      <p v-if="deleteError" class="incoming-invoice-modal__note incoming-invoice-modal__note--error">
+        {{ deleteError }}
+      </p>
 
       <template #actions>
         <div class="incoming-invoices-view__confirm-actions">
@@ -788,6 +820,12 @@ function confirmDeleteInvoice() {
   color: #475569;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.incoming-invoice-modal__note--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .incoming-invoice-modal__positions {

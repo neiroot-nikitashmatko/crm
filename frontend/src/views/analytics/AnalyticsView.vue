@@ -4,12 +4,14 @@ import { useRouter } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import { EyeOutline } from '@vicons/ionicons5'
 import AnalyticsClosedDealsModal from '@/components/analytics/AnalyticsClosedDealsModal.vue'
+import AnalyticsDealsTrafficModal from '@/components/analytics/AnalyticsDealsTrafficModal.vue'
 import AnalyticsFailedLeadsModal from '@/components/analytics/AnalyticsFailedLeadsModal.vue'
 import AnalyticsKpiCard from '@/components/analytics/AnalyticsKpiCard.vue'
 import AnalyticsLeadsTrafficCard from '@/components/analytics/AnalyticsLeadsTrafficCard.vue'
 import DealDetailsSheet from '@/components/deals/DealDetailsSheet.vue'
 import { useClosedDealsList } from '@/composables/useClosedDealsList'
 import { useDeals } from '@/composables/useDeals'
+import { useDealsTrafficList } from '@/composables/useDealsTrafficList'
 import { useEmployeeShareAnalytics } from '@/composables/useEmployeeShareAnalytics'
 import { useFailedDealShare } from '@/composables/useFailedDealShare'
 import { useFailedLeadShare } from '@/composables/useFailedLeadShare'
@@ -80,12 +82,22 @@ const {
   loadFailedLeads,
 } = useFailedLeadsList()
 
+const {
+  deals: trafficDeals,
+  isLoading: trafficDealsLoading,
+  errorMessage: trafficDealsError,
+  loadDeals: loadTrafficDeals,
+  showEmpty: showEmptyTrafficDeals,
+} = useDealsTrafficList()
+
 const { deals, loadDeals } = useDeals()
 
 const isClosedDealsListOpen = ref(false)
 const isFailedLeadsListOpen = ref(false)
+const isDealsTrafficListOpen = ref(false)
 const selectedDealId = ref<string | null>(null)
 const shouldReturnToClosedDealsList = ref(false)
+const shouldReturnToDealsTrafficList = ref(false)
 const closedDealsListDetail = ref<'nomenclature' | 'employee' | 'failed'>('nomenclature')
 
 const errorMessage = computed(
@@ -132,6 +144,10 @@ const failedDealHint = computed(() => {
   return `${failedCount} из ${dealsCount} ${getDealWord(dealsCount)}`
 })
 
+const dealsTrafficTotal = computed(() =>
+  dealMetrics.value.reduce((total, metric) => total + metric.count, 0),
+)
+
 async function openClosedDealsList(detail: 'nomenclature' | 'employee' = 'nomenclature') {
   closedDealsListDetail.value = detail
   isClosedDealsListOpen.value = true
@@ -152,6 +168,15 @@ async function openFailedLeadsList() {
   await loadFailedLeads()
 }
 
+async function openDealsTrafficList() {
+  isDealsTrafficListOpen.value = true
+  if (dealsTrafficTotal.value === 0) {
+    showEmptyTrafficDeals()
+    return
+  }
+  await loadTrafficDeals()
+}
+
 async function openClosedDeal(dealId: string) {
   shouldReturnToClosedDealsList.value = true
   isClosedDealsListOpen.value = false
@@ -169,6 +194,23 @@ async function openClosedDeal(dealId: string) {
   isClosedDealsListOpen.value = true
 }
 
+async function openDealFromTrafficList(dealId: string) {
+  shouldReturnToDealsTrafficList.value = true
+  isDealsTrafficListOpen.value = false
+
+  if (!deals.value.some((deal) => deal.id === dealId)) {
+    await loadDeals(true)
+  }
+
+  if (deals.value.some((deal) => deal.id === dealId)) {
+    selectedDealId.value = dealId
+    return
+  }
+
+  shouldReturnToDealsTrafficList.value = false
+  isDealsTrafficListOpen.value = true
+}
+
 async function openFailedLead(leadId: string) {
   if (!leadId) return
   isFailedLeadsListOpen.value = false
@@ -180,6 +222,10 @@ function handleCloseDealSheet() {
   if (shouldReturnToClosedDealsList.value) {
     shouldReturnToClosedDealsList.value = false
     isClosedDealsListOpen.value = true
+  }
+  if (shouldReturnToDealsTrafficList.value) {
+    shouldReturnToDealsTrafficList.value = false
+    isDealsTrafficListOpen.value = true
   }
 }
 
@@ -222,7 +268,21 @@ function getDealWord(count: number): string {
         noun-one="сделка"
         noun-few="сделки"
         noun-many="сделок"
-      />
+      >
+        <template #header-actions>
+          <button
+            type="button"
+            class="analytics-view__icon-action"
+            title="Список сделок"
+            aria-label="Открыть список сделок за период"
+            @click="openDealsTrafficList"
+          >
+            <NIcon :size="16">
+              <EyeOutline />
+            </NIcon>
+          </button>
+        </template>
+      </AnalyticsLeadsTrafficCard>
     </div>
 
     <div class="analytics-view__kpis">
@@ -340,6 +400,14 @@ function getDealWord(count: number): string {
       :loading="failedLeadsLoading"
       :error-message="failedLeadsError"
       @select="openFailedLead"
+    />
+
+    <AnalyticsDealsTrafficModal
+      v-model:show="isDealsTrafficListOpen"
+      :deals="trafficDeals"
+      :loading="trafficDealsLoading"
+      :error-message="trafficDealsError"
+      @select="openDealFromTrafficList"
     />
 
     <DealDetailsSheet :deal-id="selectedDealId" @close="handleCloseDealSheet" />

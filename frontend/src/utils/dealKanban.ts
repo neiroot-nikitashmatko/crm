@@ -77,12 +77,17 @@ export function inferInitialDealColumnId(deal: Deal): DealKanbanColumnId {
 
 export interface DealColumnValidationResult {
   message: string
-  targetSection: 'production' | 'pickup' | 'delivery'
+  targetSection: 'production' | 'pickup' | 'delivery' | 'outgoingInvoices'
+}
+
+export interface DealColumnValidationOptions {
+  hasOutgoingInvoice?: boolean
 }
 
 export function getDealColumnValidationResult(
   deal: Deal,
   columnId: DealKanbanColumnId,
+  options: DealColumnValidationOptions = {},
 ): DealColumnValidationResult | null {
   if (columnId === 'production') {
     if (!isDealProductionComplete(deal)) {
@@ -129,15 +134,34 @@ export function getDealColumnValidationResult(
     return null
   }
 
+  if (columnId === 'closed') {
+    if (!options.hasOutgoingInvoice) {
+      return {
+        message:
+          'Чтобы перевести сделку в «Закрытые сделки», создайте расходную накладную в разделе «Расходные накладные».',
+        targetSection: 'outgoingInvoices',
+      }
+    }
+    return null
+  }
+
   return null
 }
 
-export function getDealColumnValidationMessage(deal: Deal, columnId: DealKanbanColumnId): string | null {
-  return getDealColumnValidationResult(deal, columnId)?.message ?? null
+export function getDealColumnValidationMessage(
+  deal: Deal,
+  columnId: DealKanbanColumnId,
+  options: DealColumnValidationOptions = {},
+): string | null {
+  return getDealColumnValidationResult(deal, columnId, options)?.message ?? null
 }
 
-export function canMoveDealToColumn(deal: Deal, columnId: DealKanbanColumnId): boolean {
-  return getDealColumnValidationMessage(deal, columnId) === null
+export function canMoveDealToColumn(
+  deal: Deal,
+  columnId: DealKanbanColumnId,
+  options: DealColumnValidationOptions = {},
+): boolean {
+  return getDealColumnValidationMessage(deal, columnId, options) === null
 }
 
 export function mapColumnIdToDealSection(columnId: DealKanbanColumnId): 'production' | 'pickup' | 'delivery' | null {

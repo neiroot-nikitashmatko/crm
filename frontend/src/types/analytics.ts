@@ -61,6 +61,16 @@ export interface FailedLeadListItem {
   createdAt: number
 }
 
+export interface DealTrafficListItem {
+  id: string
+  dealNumber: number
+  firstName: string
+  patronymic: string
+  phone: string
+  trafficSource: string
+  createdAt: number
+}
+
 export type AnalyticsDateRange = [number, number]
 
 export type AnalyticsPeriodPreset = 'today' | 'month' | 'custom'

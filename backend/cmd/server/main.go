@@ -41,6 +41,9 @@ func main() {
 	dealRepo := repository.NewDealRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 	catalogProductRepo := repository.NewCatalogProductRepository(db)
+	supplierRepo := repository.NewSupplierRepository(db)
+	incomingInvoiceRepo := repository.NewIncomingInvoiceRepository(db)
+	outgoingInvoiceRepo := repository.NewOutgoingInvoiceRepository(db)
 	attachmentRepo := repository.NewAttachmentRepository(db)
 	activityRepo := repository.NewActivityRepository(db)
 	salaryEntryRepo := repository.NewSalaryEntryRepository(db)
@@ -59,9 +62,12 @@ func main() {
 	activityService := service.NewActivityService(activityRepo)
 	attachmentService := service.NewAttachmentService(attachmentRepo, activityService)
 	leadService := service.NewLeadService(leadRepo, attachmentService, activityService)
-	dealService := service.NewDealService(dealRepo, attachmentService, activityService)
+	dealService := service.NewDealService(dealRepo, attachmentService, activityService, outgoingInvoiceRepo)
 	taskService := service.NewTaskService(taskRepo, attachmentService, activityService)
 	catalogProductService := service.NewCatalogProductService(catalogProductRepo)
+	supplierService := service.NewSupplierService(supplierRepo)
+	incomingInvoiceService := service.NewIncomingInvoiceService(incomingInvoiceRepo, supplierRepo)
+	outgoingInvoiceService := service.NewOutgoingInvoiceService(outgoingInvoiceRepo, incomingInvoiceRepo, dealRepo)
 	salaryEntryService := service.NewSalaryEntryService(salaryEntryRepo, dealRepo, userRepo)
 	paymentService := service.NewPaymentService(paymentRepo, userRepo)
 	maxClient := max.NewClient(cfg.MaxBotToken, cfg.MaxChatID, cfg.MaxTLSInsecure)
@@ -104,6 +110,9 @@ func main() {
 	dealHandler := handler.NewDealHandler(dealService, attachmentService)
 	taskHandler := handler.NewTaskHandler(taskService, attachmentService)
 	catalogProductHandler := handler.NewCatalogProductHandler(catalogProductService)
+	supplierHandler := handler.NewSupplierHandler(supplierService)
+	incomingInvoiceHandler := handler.NewIncomingInvoiceHandler(incomingInvoiceService)
+	outgoingInvoiceHandler := handler.NewOutgoingInvoiceHandler(outgoingInvoiceService)
 	userHandler := handler.NewUserHandler(userService)
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 	beelineHandler := handler.NewBeelineIntegrationHandler(beelineIntegrationService)
@@ -121,6 +130,9 @@ func main() {
 		dealHandler,
 		taskHandler,
 		catalogProductHandler,
+		supplierHandler,
+		incomingInvoiceHandler,
+		outgoingInvoiceHandler,
 		userHandler,
 		attachmentHandler,
 		beelineHandler,

@@ -4,11 +4,11 @@ import SectionSubviewHeader from '@/components/common/SectionSubviewHeader.vue'
 import { useStockBalances } from '@/composables/useStockBalances'
 
 const UNCATEGORIZED_KEY = '__uncategorized__'
-const { balances, categoryGroups, uncategorizedItems, loadCatalog } = useStockBalances()
+const { balances, categoryGroups, uncategorizedItems, isLoading, loadStockData } = useStockBalances()
 const expandedCategories = reactive<Record<string, boolean>>({})
 
 onMounted(() => {
-  void loadCatalog()
+  void loadStockData()
 })
 
 function toggleCategory(category: string) {
@@ -29,7 +29,11 @@ function formatQuantity(quantity: number) {
     <SectionSubviewHeader title="Остатки на складе" />
 
     <div class="trade-subview__body">
-      <section v-if="balances.length === 0" class="stock-balances-view__placeholder">
+      <section v-if="isLoading && balances.length === 0" class="stock-balances-view__placeholder">
+        <p class="stock-balances-view__placeholder-text">Загрузка…</p>
+      </section>
+
+      <section v-else-if="balances.length === 0" class="stock-balances-view__placeholder">
         <p class="stock-balances-view__placeholder-text">
           Пока нет остатков на складе. Они появятся после добавления приходной накладной.
         </p>

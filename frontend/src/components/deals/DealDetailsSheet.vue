@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NDatePicker, NIcon, NSelect } from 'naive-ui'
-import { AttachOutline, PaperPlaneOutline, TrashOutline } from '@vicons/ionicons5'
+import { AttachOutline, AddOutline, PaperPlaneOutline, PencilOutline, TrashOutline } from '@vicons/ionicons5'
 import { DEAL_KANBAN_COLUMNS } from '@/constants/deals'
 import { PRODUCTION_NOMENCLATURE_OPTIONS } from '@/constants/production'
 import { useDeals } from '@/composables/useDeals'
@@ -28,15 +28,27 @@ import AppModalButton from '@/components/common/AppModalButton.vue'
 import EntityAttachmentList from '@/components/attachments/EntityAttachmentList.vue'
 import DealProductsEditor from '@/components/common/DealProductsEditor.vue'
 import EntityActivityTimeline from '@/components/common/EntityActivityTimeline.vue'
+import OutgoingInvoiceFormModal from '@/components/trade/OutgoingInvoiceFormModal.vue'
 import { useDealProductRows } from '@/composables/useDealProductRows'
+import { useOutgoingInvoices } from '@/composables/useOutgoingInvoices'
+import type { OutgoingInvoice } from '@/types/outgoingInvoice'
 import type { ProductRow } from '@/types/productRow'
+import { formatMoney } from '@/utils/money'
 
-type DealSectionId = 'general' | 'task' | 'products' | 'pickup' | 'delivery' | 'production'
+type DealSectionId =
+  | 'general'
+  | 'task'
+  | 'products'
+  | 'pickup'
+  | 'delivery'
+  | 'production'
+  | 'outgoingInvoices'
 
-const DEAL_SECTION_TITLES: Record<'production' | 'pickup' | 'delivery', string> = {
+const DEAL_SECTION_TITLES: Record<'production' | 'pickup' | 'delivery' | 'outgoingInvoices', string> = {
   production: 'Производство',
   pickup: 'Самовывоз',
   delivery: 'Доставка',
+  outgoingInvoices: 'Расходные накладные',
 }
 
 const DEAL_SECTIONS: Array<{ id: DealSectionId; title: string }> = [
@@ -46,6 +58,7 @@ const DEAL_SECTIONS: Array<{ id: DealSectionId; title: string }> = [
   { id: 'pickup', title: 'Самовывоз' },
   { id: 'delivery', title: 'Доставка' },
   { id: 'production', title: 'Производство' },
+  { id: 'outgoingInvoices', title: 'Расходные накладные' },
 ]
 
 const WORKING_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
@@ -70,6 +83,7 @@ const { isAdmin } = useAuth()
 const { deals, deleteDeal, updateDealProfile, updateDealPickupDelivery, updateDealProduction, updateDealStatus, addDealAttachments, addDealActivityComment, removeDealAttachment } = useDeals()
 const { leads } = useLeads()
 const { getDealRows, setDealRows, hydrateDealRows, saveDealProductRows } = useDealProductRows()
+const { getInvoiceByDealId, hasInvoiceForDeal, removeInvoice, loadInvoices } = useOutgoingInvoices()
 const { addTask, getDealTasks, loadTasks } = useTasks()
 
 const activeSection = ref<DealSectionId>('general')
@@ -85,8 +99,14 @@ const firstNameDraft = ref('')
 const patronymicDraft = ref('')
 const isStatusValidationModalOpen = ref(false)
 const statusValidationMessage = ref('')
-const statusValidationTargetSection = ref<'production' | 'pickup' | 'delivery' | null>(null)
+const statusValidationTargetSection = ref<'production' | 'pickup' | 'delivery' | 'outgoingInvoices' | null>(
+  null,
+)
 const isFailureReasonModalOpen = ref(false)
+const isOutgoingInvoiceModalOpen = ref(false)
+const isOutgoingInvoiceDeleteModalOpen = ref(false)
+const editingOutgoingInvoiceId = ref<string | null>(null)
+const outgoingInvoiceToDelete = ref<OutgoingInvoice | null>(null)
 const failureReasonDraft = ref('')
 const persistedPickupDeliveryJSON = ref('')
 const productionDueAtBeforeModal = ref<number | null>(null)
@@ -173,6 +193,54 @@ async function handleGoToLeadClick() {
   await router.push({ name: 'leads', query: { leadId } })
 }
 
+function openOutgoingInvoiceModal() {
+  if (!selectedDeal.value || hasDealOutgoingInvoice.value) return
+  editingOutgoingInvoiceId.value = null
+  isOutgoingInvoiceModalOpen.value = true
+}
+
+function openEditOutgoingInvoice(invoice: OutgoingInvoice) {
+  editingOutgoingInvoiceId.value = invoice.id
+  isOutgoingInvoiceModalOpen.value = true
+}
+
+function closeOutgoingInvoiceModal() {
+  isOutgoingInvoiceModalOpen.value = false
+  editingOutgoingInvoiceId.value = null
+}
+
+function handleOutgoingInvoiceSaved() {
+  closeOutgoingInvoiceModal()
+}
+
+function handleDeleteOutgoingInvoice(invoice: OutgoingInvoice) {
+  outgoingInvoiceToDelete.value = invoice
+  isOutgoingInvoiceDeleteModalOpen.value = true
+}
+
+function closeOutgoingInvoiceDeleteModal() {
+  isOutgoingInvoiceDeleteModalOpen.value = false
+  outgoingInvoiceToDelete.value = null
+}
+
+async function confirmDeleteOutgoingInvoice() {
+  if (!outgoingInvoiceToDelete.value) return
+
+  try {
+    await removeInvoice(outgoingInvoiceToDelete.value.id)
+    if (editingOutgoingInvoiceId.value === outgoingInvoiceToDelete.value.id) {
+      closeOutgoingInvoiceModal()
+    }
+    closeOutgoingInvoiceDeleteModal()
+  } catch (error) {
+    window.alert(
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : 'Не удалось удалить расходную накладную',
+    )
+  }
+}
+
 const currentProductionDueAt = computed({
   get: () => selectedDeal.value?.production.dueAt ?? null,
   set: (value: number | null) => {
@@ -256,6 +324,38 @@ const resolvedKanbanColumnId = computed(() =>
   selectedDeal.value ? resolveDealKanbanColumnId(selectedDeal.value) : null,
 )
 
+const canShowOutgoingInvoiceButton = computed(
+  () =>
+    resolvedKanbanColumnId.value === 'production' ||
+    resolvedKanbanColumnId.value === 'pickup' ||
+    resolvedKanbanColumnId.value === 'delivery',
+)
+
+const hasDealOutgoingInvoice = computed(() => {
+  if (!selectedDeal.value) return false
+  return hasInvoiceForDeal(selectedDeal.value.id)
+})
+
+const dealOutgoingInvoices = computed(() => {
+  if (!selectedDeal.value) return []
+  const invoice = getInvoiceByDealId(selectedDeal.value.id)
+  return invoice ? [invoice] : []
+})
+
+const outgoingInvoiceButtonTitle = computed(() =>
+  hasDealOutgoingInvoice.value
+    ? 'По этой сделке уже есть расходная накладная'
+    : 'Создать расходную накладную',
+)
+
+function formatOutgoingInvoiceDate(timestamp: number) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(timestamp)
+}
+
 watch(
   () => selectedDeal.value?.id,
   () => {
@@ -268,12 +368,15 @@ watch(
     statusValidationTargetSection.value = null
     isFailureReasonModalOpen.value = false
     failureReasonDraft.value = ''
+    closeOutgoingInvoiceModal()
+    closeOutgoingInvoiceDeleteModal()
     activeSection.value = 'general'
     closeCreateTaskModal()
     closeDealTaskDetails()
     syncPickupDeliverySnapshot()
     if (selectedDeal.value) {
       hydrateDealRows(selectedDeal.value.id)
+      void loadInvoices()
     }
   },
   { immediate: true },
@@ -418,7 +521,13 @@ async function handleStatusChange(columnId: DealKanbanColumnId) {
   if (!selectedDeal.value) return
   if (resolvedKanbanColumnId.value === columnId) return
 
-  const validationResult = getDealColumnValidationResult(selectedDeal.value, columnId)
+  if (columnId === 'closed') {
+    await loadInvoices()
+  }
+
+  const validationResult = getDealColumnValidationResult(selectedDeal.value, columnId, {
+    hasOutgoingInvoice: hasInvoiceForDeal(selectedDeal.value.id),
+  })
   if (validationResult) {
     statusValidationMessage.value = validationResult.message
     statusValidationTargetSection.value = validationResult.targetSection
@@ -437,7 +546,12 @@ async function handleStatusChange(columnId: DealKanbanColumnId) {
   try {
     await updateDealStatus(selectedDeal.value.id, columnId)
   } catch (error) {
-    console.error('Не удалось обновить статус сделки', error)
+    statusValidationMessage.value =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : 'Не удалось обновить статус сделки'
+    statusValidationTargetSection.value = columnId === 'closed' ? 'outgoingInvoices' : null
+    isStatusValidationModalOpen.value = Boolean(statusValidationMessage.value)
   }
 }
 
@@ -1051,6 +1165,119 @@ async function sendDealComment() {
                 />
               </label>
             </div>
+
+            <div
+              v-else-if="activeSection === 'outgoingInvoices'"
+              class="deal-details-sheet__panel deal-details-sheet__panel--outgoing-invoices"
+            >
+              <div class="deal-details-sheet__outgoing-toolbar">
+                <h3 class="deal-details-sheet__panel-title deal-details-sheet__panel-title--toolbar">
+                  Расходные накладные
+                </h3>
+                <button
+                  v-if="canShowOutgoingInvoiceButton"
+                  type="button"
+                  class="deal-details-sheet__outgoing-create-btn"
+                  :disabled="hasDealOutgoingInvoice"
+                  :title="outgoingInvoiceButtonTitle"
+                  aria-label="Добавить расходную накладную"
+                  @click="openOutgoingInvoiceModal"
+                >
+                  <NIcon :size="18" :component="AddOutline" />
+                </button>
+              </div>
+
+              <section
+                v-if="dealOutgoingInvoices.length === 0"
+                class="deal-details-sheet__outgoing-empty"
+              >
+                <p class="deal-details-sheet__outgoing-empty-text">
+                  По этой сделке пока нет расходных накладных
+                </p>
+              </section>
+
+              <section v-else class="deal-details-sheet__outgoing-table-wrap">
+                <div class="deal-details-sheet__outgoing-table" role="table">
+                  <div
+                    class="deal-details-sheet__outgoing-table-row deal-details-sheet__outgoing-table-row--head"
+                    role="row"
+                  >
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--head deal-details-sheet__outgoing-cell--compact"
+                      role="columnheader"
+                    >
+                      Номер
+                    </span>
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--head deal-details-sheet__outgoing-cell--compact"
+                      role="columnheader"
+                    >
+                      Дата
+                    </span>
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--head deal-details-sheet__outgoing-cell--compact"
+                      role="columnheader"
+                    >
+                      Общая сумма
+                    </span>
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--head deal-details-sheet__outgoing-cell--actions"
+                      role="columnheader"
+                      aria-hidden="true"
+                    />
+                  </div>
+
+                  <div
+                    v-for="invoice in dealOutgoingInvoices"
+                    :key="invoice.id"
+                    class="deal-details-sheet__outgoing-table-row"
+                    role="row"
+                  >
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--compact deal-details-sheet__outgoing-cell--number"
+                    >
+                      #{{ invoice.invoiceNumber }}
+                    </span>
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--compact deal-details-sheet__outgoing-cell--date"
+                    >
+                      {{ formatOutgoingInvoiceDate(invoice.date) }}
+                    </span>
+                    <span
+                      class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--compact deal-details-sheet__outgoing-cell--sum"
+                    >
+                      {{ formatMoney(invoice.total) }}
+                    </span>
+                    <div class="deal-details-sheet__outgoing-cell deal-details-sheet__outgoing-cell--actions">
+                      <div class="deal-details-sheet__outgoing-row-actions">
+                        <button
+                          type="button"
+                          class="deal-details-sheet__outgoing-icon-action"
+                          aria-label="Редактировать расходную накладную"
+                          title="Редактировать"
+                          @click="openEditOutgoingInvoice(invoice)"
+                        >
+                          <NIcon :size="16">
+                            <PencilOutline />
+                          </NIcon>
+                        </button>
+                        <button
+                          type="button"
+                          class="deal-details-sheet__outgoing-icon-action deal-details-sheet__outgoing-icon-action--danger"
+                          aria-label="Удалить расходную накладную"
+                          title="Удалить"
+                          @click="handleDeleteOutgoingInvoice(invoice)"
+                        >
+                          <NIcon :size="16">
+                            <TrashOutline />
+                          </NIcon>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
           </section>
         </div>
 
@@ -1322,6 +1549,36 @@ async function sendDealComment() {
       </section>
     </Transition>
 
+    <OutgoingInvoiceFormModal
+      :open="isOutgoingInvoiceModalOpen"
+      :locked-deal-id="selectedDeal?.id ?? null"
+      :editing-invoice-id="editingOutgoingInvoiceId"
+      @close="closeOutgoingInvoiceModal"
+      @saved="handleOutgoingInvoiceSaved"
+    />
+
+    <AppModal
+      v-model:show="isOutgoingInvoiceDeleteModalOpen"
+      title="Удаление расходной накладной"
+      body-variant="center"
+      @close="closeOutgoingInvoiceDeleteModal"
+    >
+      <p class="app-modal__message">Вы уверены, что хотите удалить данную расходную накладную?</p>
+
+      <template #actions>
+        <div class="deal-details-sheet__outgoing-confirm-actions">
+          <AppModalButton @click="confirmDeleteOutgoingInvoice">Да</AppModalButton>
+          <button
+            type="button"
+            class="deal-details-sheet__outgoing-confirm-cancel"
+            @click="closeOutgoingInvoiceDeleteModal"
+          >
+            Нет
+          </button>
+        </div>
+      </template>
+    </AppModal>
+
     <TaskDetailsSheet
       :task-id="selectedDealTask?.id ?? null"
       :task="selectedDealTask"
@@ -1409,6 +1666,16 @@ async function sendDealComment() {
 .deal-details-sheet__icon-action:hover {
   background: #f8fafc;
   border-color: #cbd5e1;
+}
+
+.deal-details-sheet__icon-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.deal-details-sheet__icon-action:disabled:hover {
+  background: #ffffff;
+  border-color: #d1d9e2;
 }
 
 .deal-details-sheet__icon-action--danger:hover {
@@ -1797,6 +2064,13 @@ async function sendDealComment() {
   cursor: pointer;
 }
 
+.deal-details-sheet__task-create-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #94a3b8;
+  border-color: #94a3b8;
+}
+
 .deal-details-sheet__sub-title {
   margin: 0;
   font-size: 14px;
@@ -1893,5 +2167,213 @@ async function sendDealComment() {
   margin: 0;
   font-size: 13px;
   color: #64748b;
+}
+
+.deal-details-sheet__panel--outgoing-invoices {
+  gap: 0;
+}
+
+.deal-details-sheet__outgoing-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.deal-details-sheet__panel-title--toolbar {
+  margin: 0;
+}
+
+.deal-details-sheet__outgoing-create-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d9e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.deal-details-sheet__outgoing-create-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1f2937;
+}
+
+.deal-details-sheet__outgoing-create-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.deal-details-sheet__outgoing-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 24px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.deal-details-sheet__outgoing-empty-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #64748b;
+  text-align: center;
+}
+
+.deal-details-sheet__outgoing-table-wrap {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.deal-details-sheet__outgoing-table {
+  display: grid;
+  width: 100%;
+  min-width: 420px;
+  grid-template-columns: max-content max-content 1fr max-content;
+}
+
+.deal-details-sheet__outgoing-table-row {
+  display: contents;
+}
+
+.deal-details-sheet__outgoing-cell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 34px;
+  padding: 5px 12px;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: #1a202c;
+  background: #ffffff;
+}
+
+.deal-details-sheet__outgoing-cell--head {
+  min-height: 38px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.deal-details-sheet__outgoing-table-row .deal-details-sheet__outgoing-cell:nth-child(4) {
+  border-right: 0;
+}
+
+.deal-details-sheet__outgoing-table-row:last-child .deal-details-sheet__outgoing-cell {
+  border-bottom: 0;
+}
+
+.deal-details-sheet__outgoing-cell--compact {
+  padding-left: 10px;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+
+.deal-details-sheet__outgoing-cell--number,
+.deal-details-sheet__outgoing-cell--date {
+  font-variant-numeric: tabular-nums;
+}
+
+.deal-details-sheet__outgoing-cell--sum {
+  font-variant-numeric: tabular-nums;
+  justify-content: flex-end;
+}
+
+.deal-details-sheet__outgoing-cell--actions {
+  justify-content: center;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.deal-details-sheet__outgoing-row-actions {
+  display: inline-flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.deal-details-sheet__outgoing-icon-action {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d9e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.deal-details-sheet__outgoing-icon-action:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.deal-details-sheet__outgoing-icon-action--danger:hover {
+  color: #dc2626;
+}
+
+.deal-details-sheet__outgoing-table-row:not(.deal-details-sheet__outgoing-table-row--head):hover .deal-details-sheet__outgoing-cell {
+  background: #f8fafc;
+}
+
+.deal-details-sheet__outgoing-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.deal-details-sheet__outgoing-confirm-cancel {
+  min-width: min(100%, 220px);
+  padding: 10px 20px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.deal-details-sheet__outgoing-confirm-cancel:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
 }
 </style>

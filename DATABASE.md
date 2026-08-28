@@ -46,10 +46,15 @@
 | `deal_products` | Товары/услуги в сделке |
 | `tasks` | Задачи по лиду или сделке |
 | `catalog_products` | Справочник товаров (название, артикул, цена) |
+| `suppliers` | Поставщики для приходных накладных |
+| `incoming_invoices` | Приходные накладные |
+| `incoming_invoice_items` | Позиции приходной накладной |
+| `outgoing_invoices` | Расходные накладные (одна на сделку) |
+| `outgoing_invoice_items` | Позиции расходной накладной |
 | `attachments` | Файлы к сделкам и задачам (хранятся в БД) |
 | `activities` | Лента событий и комментариев |
 
-**Всего 9 таблиц** (на момент миграции 017).
+**Всего 14 таблиц в этом обзоре** (плюс платежи, зарплата, Avito и др. в более новых миграциях). На торговлю — миграция `031`.
 
 ---
 
@@ -189,7 +194,49 @@
 
 ---
 
-### 4.8. `attachments` — вложения (файлы)
+### 4.8. `suppliers` — поставщики
+
+Справочник для приходных накладных.
+
+| Поле | Что это |
+|------|---------|
+| `name` | Название |
+| `contact_person` | Контактное лицо |
+| `phone` | Телефон |
+| `inn`, `kpp`, `ogrn` | Реквизиты |
+| `legal_address`, `actual_address` | Адреса |
+| `bik`, `settlement_account`, `correspondent_account` | Банковские реквизиты |
+
+Нельзя удалить поставщика, если по нему есть приходные накладные.
+
+---
+
+### 4.9. `incoming_invoices` / `incoming_invoice_items` — приход
+
+Поступление товара на склад.
+
+| Поле | Что это |
+|------|---------|
+| `invoice_number` | Номер накладной (автоматически) |
+| `invoice_date` | Дата |
+| `supplier_id` | Поставщик |
+| `total` | Сумма (считается из позиций) |
+| `comment` | Комментарий |
+| позиции | Товар из каталога, название, количество, цена |
+
+---
+
+### 4.10. `outgoing_invoices` / `outgoing_invoice_items` — расход
+
+Списание товара со склада по сделке. **У одной сделки может быть только одна расходная накладная.**
+
+Чтобы перевести сделку в «Закрытые», расходная накладная обязательна (проверка на backend).
+
+Остатки на складе = приход − расход.
+
+---
+
+### 4.11. `attachments` — вложения (файлы)
 
 Файлы прикрепляются к **сделке** или **задаче**.
 
@@ -208,7 +255,7 @@
 
 ---
 
-### 4.9. `activities` — лента активностей
+### 4.12. `activities` — лента активностей
 
 История в правой колонке карточки сделки/задачи.
 
@@ -235,6 +282,12 @@
 | `deals.created_by` | `users.id` | Сделку создал сотрудник |
 | `lead_products.lead_id` | `leads.id` | Товары лида |
 | `deal_products.deal_id` | `deals.id` | Товары сделки |
+| `incoming_invoices.supplier_id` | `suppliers.id` | Приход от поставщика |
+| `incoming_invoice_items.invoice_id` | `incoming_invoices.id` | Позиции прихода |
+| `incoming_invoice_items.catalog_product_id` | `catalog_products.id` | Товар из каталога (может стать пустым, если товар удалили) |
+| `outgoing_invoices.deal_id` | `deals.id` | Расход по сделке |
+| `outgoing_invoice_items.invoice_id` | `outgoing_invoices.id` | Позиции расхода |
+| `outgoing_invoice_items.catalog_product_id` | `catalog_products.id` | Товар из каталога |
 | `tasks.lead_id` | `leads.id` | Задача по лиду |
 | `tasks.deal_id` | `deals.id` | Задача по сделке |
 | `tasks.created_by` | `users.id` | Задачу создал сотрудник |

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { AddOutline, PencilOutline, TrashOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 import AppModal from '@/components/common/AppModal.vue'
@@ -9,12 +9,14 @@ import { useSuppliers } from '@/composables/useSuppliers'
 import type { Supplier } from '@/types/supplier'
 import { isPhoneFilled, normalizePhone, PHONE_PREFIX } from '@/utils/phone'
 
-const { suppliers, addSupplier, updateSupplier, removeSupplier } = useSuppliers()
+const { suppliers, isLoading, loadSuppliers, addSupplier, updateSupplier, removeSupplier } = useSuppliers()
 
 const isFormModalOpen = ref(false)
 const editingSupplierId = ref<string | null>(null)
 const isDeleteModalOpen = ref(false)
 const supplierToDelete = ref<Supplier | null>(null)
+const submitError = ref('')
+const deleteError = ref('')
 
 const supplierForm = reactive({
   name: '',
@@ -52,6 +54,7 @@ const canSubmitSupplier = computed(
 
 function resetSupplierForm() {
   editingSupplierId.value = null
+  submitError.value = ''
   supplierForm.name = ''
   supplierForm.contactPerson = ''
   supplierForm.phone = PHONE_PREFIX
@@ -112,7 +115,15 @@ function handleDigitsInput(
   target.value = sanitized
 }
 
-function handleSubmitSupplier() {
+onMounted(() => {
+  void loadSuppliers()
+})
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback
+}
+
+async function handleSubmitSupplier() {
   if (!canSubmitSupplier.value) return
 
   const payload = {
@@ -129,34 +140,45 @@ function handleSubmitSupplier() {
     correspondentAccount: supplierForm.correspondentAccount,
   }
 
-  if (editingSupplierId.value) {
-    updateSupplier(editingSupplierId.value, payload)
-  } else {
-    addSupplier(payload)
+  submitError.value = ''
+  try {
+    if (editingSupplierId.value) {
+      await updateSupplier(editingSupplierId.value, payload)
+    } else {
+      await addSupplier(payload)
+    }
+    closeFormModal()
+    resetSupplierForm()
+  } catch (error) {
+    submitError.value = getErrorMessage(error, 'Не удалось сохранить поставщика')
   }
-
-  closeFormModal()
-  resetSupplierForm()
 }
 
 function handleDeleteSupplier(supplier: Supplier) {
   supplierToDelete.value = supplier
+  deleteError.value = ''
   isDeleteModalOpen.value = true
 }
 
 function closeDeleteModal() {
   isDeleteModalOpen.value = false
   supplierToDelete.value = null
+  deleteError.value = ''
 }
 
-function confirmDeleteSupplier() {
+async function confirmDeleteSupplier() {
   if (!supplierToDelete.value) return
-  removeSupplier(supplierToDelete.value.id)
-  if (editingSupplierId.value === supplierToDelete.value.id) {
-    closeFormModal()
-    resetSupplierForm()
+  deleteError.value = ''
+  try {
+    await removeSupplier(supplierToDelete.value.id)
+    if (editingSupplierId.value === supplierToDelete.value.id) {
+      closeFormModal()
+      resetSupplierForm()
+    }
+    closeDeleteModal()
+  } catch (error) {
+    deleteError.value = getErrorMessage(error, 'Не удалось удалить поставщика')
   }
-  closeDeleteModal()
 }
 </script>
 
@@ -177,7 +199,11 @@ function confirmDeleteSupplier() {
     </SectionSubviewHeader>
 
     <div class="trade-subview__body">
-      <section v-if="suppliers.length === 0" class="suppliers-view__placeholder">
+      <section v-if="isLoading && suppliers.length === 0" class="suppliers-view__placeholder">
+        <p class="suppliers-view__placeholder-text">Загрузка…</p>
+      </section>
+
+      <section v-else-if="suppliers.length === 0" class="suppliers-view__placeholder">
         <p class="suppliers-view__placeholder-text">
           Пока нет поставщиков. Добавьте первого через кнопку «+» вверху.
         </p>
@@ -419,6 +445,8 @@ function confirmDeleteSupplier() {
         </label>
       </div>
 
+      <p v-if="submitError" class="suppliers-modal__error">{{ submitError }}</p>
+
       <template #actions>
         <AppModalButton
           :disabled="!canSubmitSupplier"
@@ -437,6 +465,7 @@ function confirmDeleteSupplier() {
       @close="closeDeleteModal"
     >
       <p class="app-modal__message">Вы уверены, что хотите удалить данного поставщика?</p>
+      <p v-if="deleteError" class="suppliers-modal__error">{{ deleteError }}</p>
 
       <template #actions>
         <div class="suppliers-view__confirm-actions">
@@ -715,6 +744,13 @@ function confirmDeleteSupplier() {
   outline: none;
   border-color: #93c5fd;
   box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.25);
+}
+
+.suppliers-modal__error {
+  margin: 12px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 @media (max-width: 900px) {

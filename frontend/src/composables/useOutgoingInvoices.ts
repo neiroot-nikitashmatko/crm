@@ -1,18 +1,23 @@
 import { computed, ref } from 'vue'
+import {
+  createOutgoingInvoice,
+  deleteOutgoingInvoice,
+  fetchOutgoingInvoices,
+  updateOutgoingInvoice,
+} from '@/api/outgoingInvoices'
 import type { OutgoingInvoice, OutgoingInvoiceInput } from '@/types/outgoingInvoice'
 
 const invoices = ref<OutgoingInvoice[]>([])
+const isLoaded = ref(false)
+const isLoading = ref(false)
+let inFlight: Promise<void> | null = null
 
-function createId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `outgoing-invoice-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-function nextInvoiceNumber() {
-  const maxNumber = invoices.value.reduce((max, invoice) => Math.max(max, invoice.invoiceNumber), 0)
-  return maxNumber + 1
+function findInvoiceByDealId(dealId: string, excludeInvoiceId?: string | null): OutgoingInvoice | null {
+  return (
+    invoices.value.find(
+      (item) => item.dealId === dealId && (!excludeInvoiceId || item.id !== excludeInvoiceId),
+    ) ?? null
+  )
 }
 
 export function useOutgoingInvoices() {
@@ -20,46 +25,61 @@ export function useOutgoingInvoices() {
     [...invoices.value].sort((left, right) => right.date - left.date || right.createdAt - left.createdAt),
   )
 
-  function addInvoice(input: OutgoingInvoiceInput): OutgoingInvoice {
-    const invoice: OutgoingInvoice = {
-      id: createId(),
-      invoiceNumber: nextInvoiceNumber(),
-      date: input.date,
-      dealId: input.dealId,
-      items: input.items.map((item) => ({ ...item })),
-      total: input.total,
-      comment: input.comment.trim(),
-      createdAt: Date.now(),
-    }
-    invoices.value = [...invoices.value, invoice]
-    return invoice
+  async function loadInvoices(force = false) {
+    if (isLoaded.value && !force) return
+    if (inFlight) return inFlight
+
+    inFlight = (async () => {
+      isLoading.value = true
+      try {
+        invoices.value = await fetchOutgoingInvoices()
+        isLoaded.value = true
+      } finally {
+        isLoading.value = false
+        inFlight = null
+      }
+    })()
+
+    return inFlight
   }
 
-  function updateInvoice(id: string, input: OutgoingInvoiceInput): OutgoingInvoice | null {
-    const index = invoices.value.findIndex((item) => item.id === id)
-    if (index < 0) return null
+  function getInvoiceByDealId(dealId: string): OutgoingInvoice | null {
+    return findInvoiceByDealId(dealId)
+  }
 
-    const current = invoices.value[index]
-    const updated: OutgoingInvoice = {
-      ...current,
-      date: input.date,
-      dealId: input.dealId,
-      items: input.items.map((item) => ({ ...item })),
-      total: input.total,
+  function hasInvoiceForDeal(dealId: string): boolean {
+    return findInvoiceByDealId(dealId) !== null
+  }
+
+  async function addInvoice(input: OutgoingInvoiceInput): Promise<OutgoingInvoice> {
+    const created = await createOutgoingInvoice({
+      ...input,
       comment: input.comment.trim(),
-    }
-    const next = [...invoices.value]
-    next[index] = updated
-    invoices.value = next
+    })
+    invoices.value = [...invoices.value, created]
+    return created
+  }
+
+  async function updateInvoice(id: string, input: OutgoingInvoiceInput): Promise<OutgoingInvoice> {
+    const updated = await updateOutgoingInvoice(id, {
+      ...input,
+      comment: input.comment.trim(),
+    })
+    invoices.value = invoices.value.map((item) => (item.id === id ? updated : item))
     return updated
   }
 
-  function removeInvoice(id: string) {
+  async function removeInvoice(id: string) {
+    await deleteOutgoingInvoice(id)
     invoices.value = invoices.value.filter((item) => item.id !== id)
   }
 
   return {
     invoices: sortedInvoices,
+    isLoading,
+    loadInvoices,
+    getInvoiceByDealId,
+    hasInvoiceForDeal,
     addInvoice,
     updateInvoice,
     removeInvoice,

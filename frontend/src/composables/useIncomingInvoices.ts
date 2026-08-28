@@ -1,65 +1,67 @@
 import { computed, ref } from 'vue'
+import {
+  createIncomingInvoice,
+  deleteIncomingInvoice,
+  fetchIncomingInvoices,
+  updateIncomingInvoice,
+} from '@/api/incomingInvoices'
 import type { IncomingInvoice, IncomingInvoiceInput } from '@/types/incomingInvoice'
 
 const invoices = ref<IncomingInvoice[]>([])
-
-function createId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `incoming-invoice-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-function nextInvoiceNumber() {
-  const maxNumber = invoices.value.reduce((max, invoice) => Math.max(max, invoice.invoiceNumber), 0)
-  return maxNumber + 1
-}
+const isLoaded = ref(false)
+const isLoading = ref(false)
+let inFlight: Promise<void> | null = null
 
 export function useIncomingInvoices() {
   const sortedInvoices = computed(() =>
     [...invoices.value].sort((left, right) => right.date - left.date || right.createdAt - left.createdAt),
   )
 
-  function addInvoice(input: IncomingInvoiceInput): IncomingInvoice {
-    const invoice: IncomingInvoice = {
-      id: createId(),
-      invoiceNumber: nextInvoiceNumber(),
-      date: input.date,
-      supplierId: input.supplierId,
-      items: input.items.map((item) => ({ ...item })),
-      total: input.total,
-      comment: input.comment.trim(),
-      createdAt: Date.now(),
-    }
-    invoices.value = [...invoices.value, invoice]
-    return invoice
+  async function loadInvoices(force = false) {
+    if (isLoaded.value && !force) return
+    if (inFlight) return inFlight
+
+    inFlight = (async () => {
+      isLoading.value = true
+      try {
+        invoices.value = await fetchIncomingInvoices()
+        isLoaded.value = true
+      } finally {
+        isLoading.value = false
+        inFlight = null
+      }
+    })()
+
+    return inFlight
   }
 
-  function updateInvoice(id: string, input: IncomingInvoiceInput): IncomingInvoice | null {
-    const index = invoices.value.findIndex((item) => item.id === id)
-    if (index < 0) return null
-
-    const current = invoices.value[index]
-    const updated: IncomingInvoice = {
-      ...current,
-      date: input.date,
-      supplierId: input.supplierId,
-      items: input.items.map((item) => ({ ...item })),
-      total: input.total,
+  async function addInvoice(input: IncomingInvoiceInput): Promise<IncomingInvoice> {
+    const created = await createIncomingInvoice({
+      ...input,
       comment: input.comment.trim(),
-    }
-    const next = [...invoices.value]
-    next[index] = updated
-    invoices.value = next
+    })
+    invoices.value = [...invoices.value, created]
+    return created
+  }
+
+  async function updateInvoice(id: string, input: IncomingInvoiceInput): Promise<IncomingInvoice> {
+    const updated = await updateIncomingInvoice(id, {
+      ...input,
+      comment: input.comment.trim(),
+    })
+    invoices.value = invoices.value.map((item) => (item.id === id ? updated : item))
     return updated
   }
 
-  function removeInvoice(id: string) {
+  async function removeInvoice(id: string) {
+    await deleteIncomingInvoice(id)
     invoices.value = invoices.value.filter((item) => item.id !== id)
   }
 
   return {
     invoices: sortedInvoices,
+    isLoading,
+    loadInvoices,
     addInvoice,
     updateInvoice,
     removeInvoice,

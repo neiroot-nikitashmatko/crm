@@ -22,7 +22,7 @@ Env: `DATABASE_URL`, `HTTP_ADDR`, `CORS_ORIGINS`, `JWT_SECRET`, `JWT_TTL_HOURS`
 
 ## API
 
-REST JSON `/api/v1`: auth, leads, deals, tasks, catalog-products, users (admin).
+REST JSON `/api/v1`: auth, leads, deals, tasks, catalog-products, suppliers, incoming-invoices, outgoing-invoices, users (admin).
 
 ## БД
 

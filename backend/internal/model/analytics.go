@@ -61,3 +61,13 @@ type FailedLeadListItem struct {
 	FailureReason string `json:"failureReason"`
 	CreatedAt     int64  `json:"createdAt"`
 }
+
+type DealTrafficListItem struct {
+	ID            string `json:"id"`
+	DealNumber    int64  `json:"dealNumber"`
+	FirstName     string `json:"firstName"`
+	Patronymic    string `json:"patronymic"`
+	Phone         string `json:"phone"`
+	TrafficSource string `json:"trafficSource"`
+	CreatedAt     int64  `json:"createdAt"`
+}

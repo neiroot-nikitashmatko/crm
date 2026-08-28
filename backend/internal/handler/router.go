@@ -13,6 +13,9 @@ func NewRouter(
 	dealHandler *DealHandler,
 	taskHandler *TaskHandler,
 	catalogProductHandler *CatalogProductHandler,
+	supplierHandler *SupplierHandler,
+	incomingInvoiceHandler *IncomingInvoiceHandler,
+	outgoingInvoiceHandler *OutgoingInvoiceHandler,
 	userHandler *UserHandler,
 	attachmentHandler *AttachmentHandler,
 	beelineHandler *BeelineIntegrationHandler,
@@ -47,6 +50,15 @@ func NewRouter(
 
 	mux.HandleFunc("/api/v1/catalog-products", catalogProductHandler.Collection)
 	mux.HandleFunc("/api/v1/catalog-products/", catalogProductHandler.Item)
+
+	mux.HandleFunc("/api/v1/suppliers", supplierHandler.Collection)
+	mux.HandleFunc("/api/v1/suppliers/", supplierHandler.Item)
+
+	mux.HandleFunc("/api/v1/incoming-invoices", incomingInvoiceHandler.Collection)
+	mux.HandleFunc("/api/v1/incoming-invoices/", incomingInvoiceHandler.Item)
+
+	mux.HandleFunc("/api/v1/outgoing-invoices", outgoingInvoiceHandler.Collection)
+	mux.HandleFunc("/api/v1/outgoing-invoices/", outgoingInvoiceHandler.Item)
 
 	mux.HandleFunc("/api/v1/users", userHandler.Collection)
 	mux.HandleFunc("/api/v1/users/", userHandler.Item)
@@ -84,6 +96,7 @@ func NewRouter(
 	mux.HandleFunc("/api/v1/analytics/closed-deals", analyticsHandler.ClosedDealsList)
 	mux.HandleFunc("/api/v1/analytics/failed-deals", analyticsHandler.FailedDealsList)
 	mux.HandleFunc("/api/v1/analytics/failed-leads", analyticsHandler.FailedLeadsList)
+	mux.HandleFunc("/api/v1/analytics/deals-traffic-list", analyticsHandler.DealsTrafficList)
 
 	// Authenticated SSE stream with internal events.
 	mux.HandleFunc("/api/v1/events/leads", eventsHandler.LeadCreatedStream)

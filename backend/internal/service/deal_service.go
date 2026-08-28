@@ -11,17 +11,24 @@ import (
 )
 
 type DealService struct {
-	repo        *repository.DealRepository
-	attachments *AttachmentService
-	activities  *ActivityService
+	repo             *repository.DealRepository
+	attachments      *AttachmentService
+	activities       *ActivityService
+	outgoingInvoices *repository.OutgoingInvoiceRepository
 }
 
 func NewDealService(
 	repo *repository.DealRepository,
 	attachments *AttachmentService,
 	activities *ActivityService,
+	outgoingInvoices *repository.OutgoingInvoiceRepository,
 ) *DealService {
-	return &DealService{repo: repo, attachments: attachments, activities: activities}
+	return &DealService{
+		repo:             repo,
+		attachments:      attachments,
+		activities:       activities,
+		outgoingInvoices: outgoingInvoices,
+	}
 }
 
 func (s *DealService) List(ctx context.Context) ([]model.Deal, error) {
@@ -74,6 +81,15 @@ func (s *DealService) UpdateStatus(ctx context.Context, dealID string, status st
 	if status == "failed" {
 		if failureReason == nil || strings.TrimSpace(*failureReason) == "" {
 			return model.Deal{}, errors.New("failureReason is required")
+		}
+	}
+	if status == "closed" {
+		exists, err := s.outgoingInvoices.ExistsByDealID(ctx, dealID, "")
+		if err != nil {
+			return model.Deal{}, err
+		}
+		if !exists {
+			return model.Deal{}, errors.New("чтобы перевести сделку в «Закрытые сделки», создайте расходную накладную в разделе «Расходные накладные»")
 		}
 	}
 	deal, err := s.repo.UpdateStatus(ctx, dealID, status, failureReason)
