@@ -1,5 +1,6 @@
 import { ApiError, requestJson } from '@/api/httpClient'
-import type { AnalyticsDateRange, ClosedDealListItem, DealTrafficListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TrafficSourceCount } from '@/types/analytics'
+import { getMockTradeProfit, isTradeProfitMockEnabled } from '@/mocks/tradeProfit'
+import type { AnalyticsDateRange, ClosedDealListItem, DealTrafficListItem, EmployeeShareCount, FailedDealShare, FailedLeadListItem, FailedLeadShare, LeadToDealConversion, ProductionCategoryCount, TradeProfit, TrafficSourceCount } from '@/types/analytics'
 
 interface TrafficSourceResponse {
   items: TrafficSourceCount[]
@@ -109,6 +110,29 @@ export async function fetchFailedDealShare(range: AnalyticsDateRange): Promise<F
     dealsCount: Number(payload.item?.dealsCount ?? 0),
     failedCount: Number(payload.item?.failedCount ?? 0),
     percent: Number(payload.item?.percent ?? 0),
+  }
+}
+
+export async function fetchTradeProfit(range: AnalyticsDateRange): Promise<TradeProfit> {
+  if (isTradeProfitMockEnabled()) {
+    return getMockTradeProfit(range)
+  }
+
+  const [from, to] = range
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+  })
+  const payload = await analyticsRequestJson<{ item: TradeProfit }>(
+    `/api/v1/analytics/trade-profit?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  return {
+    profit: Number(payload.item?.profit ?? 0),
+    revenue: Number(payload.item?.revenue ?? 0),
+    cost: Number(payload.item?.cost ?? 0),
+    invoicesCount: Number(payload.item?.invoicesCount ?? 0),
   }
 }
 

@@ -71,3 +71,10 @@ type DealTrafficListItem struct {
 	TrafficSource string `json:"trafficSource"`
 	CreatedAt     int64  `json:"createdAt"`
 }
+
+type TradeProfit struct {
+	Profit        float64 `json:"profit"`
+	Revenue       float64 `json:"revenue"`
+	Cost          float64 `json:"cost"`
+	InvoicesCount int     `json:"invoicesCount"`
+}

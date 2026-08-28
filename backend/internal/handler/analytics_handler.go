@@ -74,6 +74,12 @@ func (h *AnalyticsHandler) DealsTrafficList(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+func (h *AnalyticsHandler) TradeProfit(w http.ResponseWriter, r *http.Request) {
+	h.share(w, r, func(ctx context.Context, fromMs int64, toMs int64) (any, error) {
+		return h.service.TradeProfit(ctx, fromMs, toMs)
+	})
+}
+
 func (h *AnalyticsHandler) ClosedDealsList(w http.ResponseWriter, r *http.Request) {
 	requireEmployee := r.URL.Query().Get("requireEmployee") == "1"
 	requireProduction := r.URL.Query().Get("requireProduction") == "1"

@@ -442,6 +442,58 @@ ORDER BY created_at DESC, deal_number DESC
 	return items, nil
 }
 
+func (r *AnalyticsRepository) TradeProfit(
+	ctx context.Context,
+	from time.Time,
+	to time.Time,
+) (model.TradeProfit, error) {
+	const query = `
+WITH product_costs AS (
+  SELECT
+    CASE
+      WHEN catalog_product_id IS NOT NULL THEN 'id:' || catalog_product_id::text
+      ELSE 'title:' || lower(btrim(title))
+    END AS product_key,
+    SUM(quantity * unit_price) / NULLIF(SUM(quantity), 0) AS avg_cost
+  FROM incoming_invoice_items
+  WHERE btrim(title) <> '' OR catalog_product_id IS NOT NULL
+  GROUP BY 1
+),
+sales AS (
+  SELECT
+    o.id AS invoice_id,
+    i.quantity,
+    i.unit_price,
+    CASE
+      WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
+      ELSE 'title:' || lower(btrim(i.title))
+    END AS product_key
+  FROM outgoing_invoices o
+  JOIN outgoing_invoice_items i ON i.invoice_id = o.id
+  WHERE o.invoice_date >= $1
+    AND o.invoice_date <= $2
+    AND (btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL)
+)
+SELECT
+  COALESCE(SUM(s.quantity * s.unit_price), 0)::float8 AS revenue,
+  COALESCE(SUM(s.quantity * COALESCE(c.avg_cost, 0)), 0)::float8 AS cost,
+  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.avg_cost, 0))), 0)::float8 AS profit,
+  COUNT(DISTINCT s.invoice_id)::int AS invoices_count
+FROM sales s
+LEFT JOIN product_costs c ON c.product_key = s.product_key
+`
+	var item model.TradeProfit
+	if err := r.db.QueryRow(ctx, query, from, to).Scan(
+		&item.Revenue,
+		&item.Cost,
+		&item.Profit,
+		&item.InvoicesCount,
+	); err != nil {
+		return model.TradeProfit{}, err
+	}
+	return item, nil
+}
+
 func (r *AnalyticsRepository) scanTrafficSourceCounts(
 	ctx context.Context,
 	query string,

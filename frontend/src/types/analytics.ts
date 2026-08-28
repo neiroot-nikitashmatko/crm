@@ -71,6 +71,13 @@ export interface DealTrafficListItem {
   createdAt: number
 }
 
+export interface TradeProfit {
+  profit: number
+  revenue: number
+  cost: number
+  invoicesCount: number
+}
+
 export type AnalyticsDateRange = [number, number]
 
 export type AnalyticsPeriodPreset = 'today' | 'month' | 'custom'

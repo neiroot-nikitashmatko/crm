@@ -255,3 +255,15 @@ func (s *AnalyticsService) DealsTrafficList(
 	}
 	return s.repo.ListDealsForTrafficPeriod(ctx, from, to)
 }
+
+func (s *AnalyticsService) TradeProfit(
+	ctx context.Context,
+	fromMs int64,
+	toMs int64,
+) (model.TradeProfit, error) {
+	from, to, err := s.parsePeriod(fromMs, toMs)
+	if err != nil {
+		return model.TradeProfit{}, err
+	}
+	return s.repo.TradeProfit(ctx, from, to)
+}

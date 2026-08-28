@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import { EyeOutline } from '@vicons/ionicons5'
+import AnalyticsAmountCard from '@/components/analytics/AnalyticsAmountCard.vue'
 import AnalyticsClosedDealsModal from '@/components/analytics/AnalyticsClosedDealsModal.vue'
 import AnalyticsDealsTrafficModal from '@/components/analytics/AnalyticsDealsTrafficModal.vue'
 import AnalyticsFailedLeadsModal from '@/components/analytics/AnalyticsFailedLeadsModal.vue'
@@ -22,6 +23,7 @@ import {
   useLeadTrafficAnalytics,
 } from '@/composables/useLeadTrafficAnalytics'
 import { useProductionShareAnalytics } from '@/composables/useProductionShareAnalytics'
+import { useTradeProfit } from '@/composables/useTradeProfit'
 
 const router = useRouter()
 
@@ -54,6 +56,17 @@ const {
   isLoading: failedDealLoading,
   errorMessage: failedDealError,
 } = useFailedDealShare()
+
+const {
+  profitAmount: tradeProfitAmount,
+  revenueAmount: tradeRevenueAmount,
+  marginPercent: tradeMarginPercent,
+  markupPercent: tradeMarkupPercent,
+  emptyHint: tradeEmptyHint,
+  markupHint: tradeMarkupHint,
+  isLoading: tradeProfitLoading,
+  errorMessage: tradeProfitError,
+} = useTradeProfit()
 
 const {
   metrics: productionMetrics,
@@ -107,6 +120,7 @@ const errorMessage = computed(
     conversionError.value ||
     failedError.value ||
     failedDealError.value ||
+    tradeProfitError.value ||
     productionError.value ||
     employeeError.value,
 )
@@ -385,6 +399,35 @@ function getDealWord(count: number): string {
       </AnalyticsLeadsTrafficCard>
     </div>
 
+    <div class="analytics-view__kpis analytics-view__kpis--trade">
+      <AnalyticsAmountCard
+        title="Прибыль"
+        :amount="tradeProfitAmount"
+        :hint="tradeEmptyHint"
+        :loading="tradeProfitLoading"
+      />
+      <AnalyticsAmountCard
+        title="Выручка"
+        :amount="tradeRevenueAmount"
+        :hint="tradeEmptyHint"
+        :loading="tradeProfitLoading"
+      />
+      <AnalyticsAmountCard
+        title="Маржа"
+        format="percent"
+        :amount="tradeMarginPercent"
+        :hint="tradeEmptyHint"
+        :loading="tradeProfitLoading"
+      />
+      <AnalyticsAmountCard
+        title="Наценка"
+        format="percent"
+        :amount="tradeMarkupPercent"
+        :hint="tradeMarkupHint"
+        :loading="tradeProfitLoading"
+      />
+    </div>
+
     <AnalyticsClosedDealsModal
       v-model:show="isClosedDealsListOpen"
       :deals="closedDeals"
@@ -444,6 +487,10 @@ function getDealWord(count: number): string {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.analytics-view__kpis--trade {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .analytics-view__icon-action {
   width: 30px;
   height: 30px;
@@ -466,9 +513,17 @@ function getDealWord(count: number): string {
   border-color: #cbd5e1;
 }
 
+@media (max-width: 1200px) {
+  .analytics-view__kpis,
+  .analytics-view__kpis--trade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 960px) {
   .analytics-view__charts,
-  .analytics-view__kpis {
+  .analytics-view__kpis,
+  .analytics-view__kpis--trade {
     grid-template-columns: minmax(0, 1fr);
   }
 }
