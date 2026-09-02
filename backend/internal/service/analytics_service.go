@@ -265,7 +265,11 @@ func (s *AnalyticsService) TradeProfit(
 	if err != nil {
 		return model.TradeProfit{}, err
 	}
-	return s.repo.TradeProfit(ctx, from, to)
+	totals, _, err := s.computeTradeProfit(ctx, from, to)
+	if err != nil {
+		return model.TradeProfit{}, err
+	}
+	return totals, nil
 }
 
 func (s *AnalyticsService) TradeProfitItems(
@@ -277,5 +281,26 @@ func (s *AnalyticsService) TradeProfitItems(
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.TradeProfitItems(ctx, from, to)
+	_, items, err := s.computeTradeProfit(ctx, from, to)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (s *AnalyticsService) computeTradeProfit(
+	ctx context.Context,
+	from time.Time,
+	to time.Time,
+) (model.TradeProfit, []model.TradeProfitItem, error) {
+	lots, err := s.repo.ListIncomingStockLots(ctx)
+	if err != nil {
+		return model.TradeProfit{}, nil, err
+	}
+	sales, err := s.repo.ListOutgoingSaleLines(ctx)
+	if err != nil {
+		return model.TradeProfit{}, nil, err
+	}
+	totals, items := computeTradeProfitFIFO(lots, sales, from, to)
+	return totals, items, nil
 }

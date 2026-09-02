@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type TrafficSourceMetric struct {
 	Source string `json:"source"`
 	Count  int    `json:"count"`
@@ -87,4 +89,26 @@ type TradeProfitItem struct {
 	SalePrice  float64 `json:"salePrice"`
 	Profit     float64 `json:"profit"`
 	HasCost    bool    `json:"hasCost"`
+}
+
+type IncomingStockLot struct {
+	ProductKey    string
+	Quantity      float64
+	UnitCost      float64
+	InvoiceDate   time.Time
+	CreatedAt     time.Time
+	InvoiceNumber int64
+	Position      int
+}
+
+type OutgoingSaleLine struct {
+	InvoiceID     string
+	Title         string
+	ProductKey    string
+	Quantity      float64
+	UnitPrice     float64
+	InvoiceDate   time.Time
+	CreatedAt     time.Time
+	InvoiceNumber int64
+	Position      int
 }

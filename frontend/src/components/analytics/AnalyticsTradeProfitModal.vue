@@ -45,7 +45,7 @@ function profitClass(amount: number): string {
     </p>
     <template v-else>
       <ul class="analytics-trade-profit-modal__list">
-        <li v-for="item in items" :key="item.productKey || item.title">
+        <li v-for="item in items" :key="`${item.productKey}:${item.hasCost}:${item.costPrice}`">
           <article class="analytics-trade-profit-modal__item">
             <div class="analytics-trade-profit-modal__content">
               <p class="analytics-trade-profit-modal__title">{{ item.title }}</p>

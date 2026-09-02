@@ -442,147 +442,41 @@ ORDER BY created_at DESC, deal_number DESC
 	return items, nil
 }
 
-func (r *AnalyticsRepository) TradeProfit(
-	ctx context.Context,
-	from time.Time,
-	to time.Time,
-) (model.TradeProfit, error) {
+func (r *AnalyticsRepository) ListIncomingStockLots(ctx context.Context) ([]model.IncomingStockLot, error) {
 	const query = `
-WITH product_costs AS (
-  SELECT DISTINCT ON (product_key)
-    product_key,
-    unit_price AS unit_cost
-  FROM (
-    SELECT
-      CASE
-        WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
-        ELSE 'title:' || lower(btrim(i.title))
-      END AS product_key,
-      i.unit_price,
-      inv.invoice_date,
-      inv.created_at,
-      i.position
-    FROM incoming_invoice_items i
-    JOIN incoming_invoices inv ON inv.id = i.invoice_id
-    WHERE btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL
-  ) incoming
-  ORDER BY product_key, invoice_date DESC, created_at DESC, position DESC
-),
-sales AS (
-  SELECT
-    o.id AS invoice_id,
-    i.quantity,
-    i.unit_price,
-    CASE
-      WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
-      ELSE 'title:' || lower(btrim(i.title))
-    END AS product_key
-  FROM outgoing_invoices o
-  JOIN outgoing_invoice_items i ON i.invoice_id = o.id
-  WHERE o.invoice_date >= $1
-    AND o.invoice_date <= $2
-    AND (btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL)
-)
 SELECT
-  COALESCE(SUM(s.quantity * s.unit_price), 0)::float8 AS revenue,
-  COALESCE(SUM(s.quantity * COALESCE(c.unit_cost, 0)), 0)::float8 AS cost,
-  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.unit_cost, 0))), 0)::float8 AS profit,
-  COUNT(DISTINCT s.invoice_id)::int AS invoices_count
-FROM sales s
-LEFT JOIN product_costs c ON c.product_key = s.product_key
+  CASE
+    WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
+    ELSE 'title:' || lower(btrim(i.title))
+  END AS product_key,
+  i.quantity::float8,
+  i.unit_price::float8,
+  inv.invoice_date,
+  inv.created_at,
+  inv.invoice_number,
+  i.position
+FROM incoming_invoice_items i
+JOIN incoming_invoices inv ON inv.id = i.invoice_id
+WHERE btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL
+ORDER BY inv.invoice_date ASC, inv.created_at ASC, inv.invoice_number ASC, i.position ASC
 `
-	var item model.TradeProfit
-	if err := r.db.QueryRow(ctx, query, from, to).Scan(
-		&item.Revenue,
-		&item.Cost,
-		&item.Profit,
-		&item.InvoicesCount,
-	); err != nil {
-		return model.TradeProfit{}, err
-	}
-	return item, nil
-}
-
-func (r *AnalyticsRepository) TradeProfitItems(
-	ctx context.Context,
-	from time.Time,
-	to time.Time,
-) ([]model.TradeProfitItem, error) {
-	const query = `
-WITH product_costs AS (
-  SELECT DISTINCT ON (product_key)
-    product_key,
-    unit_price AS unit_cost
-  FROM (
-    SELECT
-      CASE
-        WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
-        ELSE 'title:' || lower(btrim(i.title))
-      END AS product_key,
-      i.unit_price,
-      inv.invoice_date,
-      inv.created_at,
-      i.position
-    FROM incoming_invoice_items i
-    JOIN incoming_invoices inv ON inv.id = i.invoice_id
-    WHERE btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL
-  ) incoming
-  ORDER BY product_key, invoice_date DESC, created_at DESC, position DESC
-),
-sales AS (
-  SELECT
-    i.title,
-    i.quantity,
-    i.unit_price,
-    CASE
-      WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
-      ELSE 'title:' || lower(btrim(i.title))
-    END AS product_key
-  FROM outgoing_invoices o
-  JOIN outgoing_invoice_items i ON i.invoice_id = o.id
-  WHERE o.invoice_date >= $1
-    AND o.invoice_date <= $2
-    AND (btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL)
-)
-SELECT
-  s.product_key,
-  COALESCE(
-    (
-      ARRAY_AGG(NULLIF(btrim(s.title), '') ORDER BY s.quantity DESC)
-      FILTER (WHERE btrim(s.title) <> '')
-    )[1],
-    'Без названия'
-  ) AS title,
-  COALESCE(SUM(s.quantity), 0)::float8 AS quantity,
-  COALESCE(c.unit_cost, 0)::float8 AS cost_price,
-  COALESCE(
-    SUM(s.quantity * s.unit_price) / NULLIF(SUM(s.quantity), 0),
-    0
-  )::float8 AS sale_price,
-  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.unit_cost, 0))), 0)::float8 AS profit,
-  (c.unit_cost IS NOT NULL) AS has_cost
-FROM sales s
-LEFT JOIN product_costs c ON c.product_key = s.product_key
-GROUP BY s.product_key, c.unit_cost
-ORDER BY profit DESC, title ASC
-`
-	rows, err := r.db.Query(ctx, query, from, to)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]model.TradeProfitItem, 0)
+	items := make([]model.IncomingStockLot, 0)
 	for rows.Next() {
-		var item model.TradeProfitItem
+		var item model.IncomingStockLot
 		if err := rows.Scan(
 			&item.ProductKey,
-			&item.Title,
 			&item.Quantity,
-			&item.CostPrice,
-			&item.SalePrice,
-			&item.Profit,
-			&item.HasCost,
+			&item.UnitCost,
+			&item.InvoiceDate,
+			&item.CreatedAt,
+			&item.InvoiceNumber,
+			&item.Position,
 		); err != nil {
 			return nil, err
 		}
@@ -591,7 +485,56 @@ ORDER BY profit DESC, title ASC
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	return items, nil
+}
 
+func (r *AnalyticsRepository) ListOutgoingSaleLines(ctx context.Context) ([]model.OutgoingSaleLine, error) {
+	const query = `
+SELECT
+  o.id::text,
+  i.title,
+  CASE
+    WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
+    ELSE 'title:' || lower(btrim(i.title))
+  END AS product_key,
+  i.quantity::float8,
+  i.unit_price::float8,
+  o.invoice_date,
+  o.created_at,
+  o.invoice_number,
+  i.position
+FROM outgoing_invoices o
+JOIN outgoing_invoice_items i ON i.invoice_id = o.id
+WHERE btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL
+ORDER BY o.invoice_date ASC, o.created_at ASC, o.invoice_number ASC, i.position ASC
+`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]model.OutgoingSaleLine, 0)
+	for rows.Next() {
+		var item model.OutgoingSaleLine
+		if err := rows.Scan(
+			&item.InvoiceID,
+			&item.Title,
+			&item.ProductKey,
+			&item.Quantity,
+			&item.UnitPrice,
+			&item.InvoiceDate,
+			&item.CreatedAt,
+			&item.InvoiceNumber,
+			&item.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 
