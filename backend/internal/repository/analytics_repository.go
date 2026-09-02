@@ -449,15 +449,24 @@ func (r *AnalyticsRepository) TradeProfit(
 ) (model.TradeProfit, error) {
 	const query = `
 WITH product_costs AS (
-  SELECT
-    CASE
-      WHEN catalog_product_id IS NOT NULL THEN 'id:' || catalog_product_id::text
-      ELSE 'title:' || lower(btrim(title))
-    END AS product_key,
-    SUM(quantity * unit_price) / NULLIF(SUM(quantity), 0) AS avg_cost
-  FROM incoming_invoice_items
-  WHERE btrim(title) <> '' OR catalog_product_id IS NOT NULL
-  GROUP BY 1
+  SELECT DISTINCT ON (product_key)
+    product_key,
+    unit_price AS unit_cost
+  FROM (
+    SELECT
+      CASE
+        WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
+        ELSE 'title:' || lower(btrim(i.title))
+      END AS product_key,
+      i.unit_price,
+      inv.invoice_date,
+      inv.created_at,
+      i.position
+    FROM incoming_invoice_items i
+    JOIN incoming_invoices inv ON inv.id = i.invoice_id
+    WHERE btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL
+  ) incoming
+  ORDER BY product_key, invoice_date DESC, created_at DESC, position DESC
 ),
 sales AS (
   SELECT
@@ -476,8 +485,8 @@ sales AS (
 )
 SELECT
   COALESCE(SUM(s.quantity * s.unit_price), 0)::float8 AS revenue,
-  COALESCE(SUM(s.quantity * COALESCE(c.avg_cost, 0)), 0)::float8 AS cost,
-  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.avg_cost, 0))), 0)::float8 AS profit,
+  COALESCE(SUM(s.quantity * COALESCE(c.unit_cost, 0)), 0)::float8 AS cost,
+  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.unit_cost, 0))), 0)::float8 AS profit,
   COUNT(DISTINCT s.invoice_id)::int AS invoices_count
 FROM sales s
 LEFT JOIN product_costs c ON c.product_key = s.product_key
@@ -501,15 +510,24 @@ func (r *AnalyticsRepository) TradeProfitItems(
 ) ([]model.TradeProfitItem, error) {
 	const query = `
 WITH product_costs AS (
-  SELECT
-    CASE
-      WHEN catalog_product_id IS NOT NULL THEN 'id:' || catalog_product_id::text
-      ELSE 'title:' || lower(btrim(title))
-    END AS product_key,
-    SUM(quantity * unit_price) / NULLIF(SUM(quantity), 0) AS avg_cost
-  FROM incoming_invoice_items
-  WHERE btrim(title) <> '' OR catalog_product_id IS NOT NULL
-  GROUP BY 1
+  SELECT DISTINCT ON (product_key)
+    product_key,
+    unit_price AS unit_cost
+  FROM (
+    SELECT
+      CASE
+        WHEN i.catalog_product_id IS NOT NULL THEN 'id:' || i.catalog_product_id::text
+        ELSE 'title:' || lower(btrim(i.title))
+      END AS product_key,
+      i.unit_price,
+      inv.invoice_date,
+      inv.created_at,
+      i.position
+    FROM incoming_invoice_items i
+    JOIN incoming_invoices inv ON inv.id = i.invoice_id
+    WHERE btrim(i.title) <> '' OR i.catalog_product_id IS NOT NULL
+  ) incoming
+  ORDER BY product_key, invoice_date DESC, created_at DESC, position DESC
 ),
 sales AS (
   SELECT
@@ -536,16 +554,16 @@ SELECT
     'Без названия'
   ) AS title,
   COALESCE(SUM(s.quantity), 0)::float8 AS quantity,
-  COALESCE(c.avg_cost, 0)::float8 AS cost_price,
+  COALESCE(c.unit_cost, 0)::float8 AS cost_price,
   COALESCE(
     SUM(s.quantity * s.unit_price) / NULLIF(SUM(s.quantity), 0),
     0
   )::float8 AS sale_price,
-  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.avg_cost, 0))), 0)::float8 AS profit,
-  (c.avg_cost IS NOT NULL) AS has_cost
+  COALESCE(SUM(s.quantity * (s.unit_price - COALESCE(c.unit_cost, 0))), 0)::float8 AS profit,
+  (c.unit_cost IS NOT NULL) AS has_cost
 FROM sales s
 LEFT JOIN product_costs c ON c.product_key = s.product_key
-GROUP BY s.product_key, c.avg_cost
+GROUP BY s.product_key, c.unit_cost
 ORDER BY profit DESC, title ASC
 `
 	rows, err := r.db.Query(ctx, query, from, to)
